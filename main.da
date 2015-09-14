@@ -1,0 +1,65 @@
+import sys
+import math
+import numpy as np
+class lamutex(process):
+    def setup(s:set, nrequests:int): pass  # s is set of all other processes
+
+    def mutex(task):
+        -- request
+        c = logical_clock()
+        send(('request', c, self.id), to=s)
+        await(each(received(('request', c2, p)),
+                   has=received(('release', c2, p)) or (c, self.id) < (c2, p))
+              and each(p in s, has=received(('ack', c, p))))
+        -- critical_section
+        task()
+        -- release
+        send(('release', c, self.id), to=s)
+
+    def receive(msg=('request', c, p)):
+        send(('ack', c, self.id), to=p)
+
+    def run():
+        def task(): output('in cs')
+
+        for i in range(nrequests):
+            mutex(task)
+
+        send(('done', self.id), to=s)
+        await(each(p in s, has=received(('done', p))))
+        output('terminating')
+
+#function to generate an equispaced array for all cases where splits might not be exactly divisible
+# example: gen_equispaced_array(4,5) asks to split 4 into 5 splits generates [1,1,1,1,0]
+def gen_equispaced_array(limit, num_splits):
+    interval_len = math.floor(limit / num_splits)
+    interval_rem = limit - num_splits*interval_len
+    lis = []
+    
+    for counter in range(num_splits):
+        x = interval_len
+        if interval_rem > 0:
+            x = x + 1
+            interval_rem = interval_rem - 1
+        lis.append(x)
+    return lis
+
+
+def main():
+    p = int(sys.argv[1]) if len(sys.argv) > 1 else 10 #(p)
+    r = int(sys.argv[2]) if len(sys.argv) > 2 else 1 #total number of requests (r)
+    n = int(sys.argv[3]) if len(sys.argv) > 2 else 1 #number of runs for correctness testing (n)
+    s = int(sys.argv[4]) if len(sys.argv) > 3 else 1 #number of different runs (s)
+    m = int(sys.argv[5]) if len(sys.argv) > 4 else 1 #number of repetitions (m)
+
+    # region : running lamutex
+    config(channel='fifo', clock='Lamport')
+    # region performance testing
+    ps = new(lamutex, num= p)
+    req_ea_round = [np.linspace(0,r, s).toarray(), lambda x:int(x)]
+    gen_equispaced_array(limit, num_splits)
+    req_per_process = r / p
+    for p in ps: setup(p, (ps-{p}, nrequests))
+
+    #end region : performance testing
+    # endregion
