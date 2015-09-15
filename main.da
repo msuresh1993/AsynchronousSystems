@@ -15,26 +15,42 @@ import matplotlib.pyplot as plt
 #         await(each(p in s, has= some(received(('done', p)))))
 #         draw_graphs()
 lamutex_resptime = []
+ramutex_resptime = []
+ratoken_resptime = []
 class driverclass(process):
     def setup(p:int, r:int, n:int ,s:int ,m:int): pass
 
-    def draw_waittime_vs_reqnum(N, lamutex, req_num):
-        print(lamutex, req_num)
-        fig1 = plt.figure()
-        ax1 = fig1.add_subplot(111)
-        ax1.plot(req_num, lamutex)
-        ax1.axis((min(req_num)-1,max(req_num)+1, min(lamutex)-1, max(lamutex)+1))
-        fig2 = plt.figure()
-        ax2 = fig1.add_subplot(111)
-        ax2.plot(req_num, lamutex)
+    def draw_waittime_vs_reqnum(N,req_num, lamutex,ramutex, ratoken):
+        print(lamutex, ramutex, req_num)
+        fig1, ax1 = plt.subplots()
+        fig1.suptitle('Waiting Time Graph')
+        # ax1 = fig1.add_subplot(111)
+        ax1.plot(req_num, lamutex,'r', label="La Mutex")
+        ax1.plot(req_num, ramutex,'b', label="Ra Mutex")
+        ax1.plot(req_num, ratoken,'g', label="Ra Token")
+        plt.legend(loc=2, borderaxespad=0.)
+        ax1.set_xlabel("number of request(s)")
+        ax1.set_ylabel("average waiting time")
+        lower_limit_y = min((min(lamutex), min(ramutex), min(ratoken))) - 1
+        upper_limit_y = max((max(lamutex), max(ramutex), min(ratoken))) + 1
+        ax1.axis((min(req_num)-1,max(req_num)+1, lower_limit_y, upper_limit_y))
         plt.show()
 
     def receive(msg=('lamutex_waitt', waittime, id)):
         lamutex_resptime.append(waittime)
+
+    def receive(msg=('ramutex_waitt', waittime, id)):
+        ramutex_resptime.append(waittime)
+
+    def receive(msg=('ratoken_waitt', waittime, id)):
+        ratoken_resptime.append(waittime)
+
     def run():
         config(channel='fifo', clock='Lamport')
-        req_ea_round = [int(math.ceil(x)) for x in np.linspace(0,r, s+1).tolist()]
+        req_ea_round = [int(math.ceil(x)) for x in np.linspace(0, r, s+1).tolist()]
         lamu_graphline = []
+        ramu_graphline = []
+        rato_graphline = []
         req_count = 0
         for req in req_ea_round[1:]:
             req_sum = 0
@@ -53,7 +69,43 @@ class driverclass(process):
                 lamutex_resptime.clear()
             lamu_graphline.append(req_sum/m)
             req_count = req_count + 1
-        draw_waittime_vs_reqnum(len(lamu_graphline), lamu_graphline, req_ea_round[1:])
+        req_count = 0
+        for req in req_ea_round[1:]:
+            req_sum = 0
+            for i in range(m):
+                ps = new(ramutex, num = p)
+                req_per_process = gen_equispaced_array(req, p)
+                index = 0
+                for pr in ps:
+                    setup(pr, (ps-{pr}, req_per_process[index], self.id, i, req_count))
+                    index = index + 1
+                start(ps)
+                await(each(pr in ps, has=some(received(('ramutex_rddone', pr, _i, _req_count)))))
+                req_sum = req_sum + sum(ramutex_resptime)/len(ramutex_resptime)
+                ramutex_resptime.clear()
+            ramu_graphline.append(req_sum/m)
+            req_count = req_count + 1
+
+        req_count = 0
+        for req in req_ea_round[1:]:
+            req_sum = 0
+            for i in range(m):
+                ps = new(ratoken, num = p)
+                req_per_process = gen_equispaced_array(req, p)
+                index = 0
+                pz = ps.pop()
+                setup([pz], (ps|{pz}, req_per_process[index], True, self.id, i, req_count))
+                index = index + 1
+                for pr in ps:
+                    setup(pr, (ps|{pz}, req_per_process[index], False, self.id, i, req_count))
+                    index = index + 1
+                start(ps|{pz})
+                await(each(pr in ps, has=some(received(('ratoken_rddone', pr, _i, _req_count)))))
+                req_sum = req_sum + sum(ratoken_resptime)/len(ratoken_resptime)
+                ratoken_resptime.clear()
+            rato_graphline.append(req_sum/m)
+            req_count = req_count + 1
+        draw_waittime_vs_reqnum(len(lamu_graphline),req_ea_round[1:], lamu_graphline,ramu_graphline, rato_graphline)
 
 
 
@@ -71,9 +123,10 @@ class lamutex(process):
                    has=received(('release', c2, p)) or (c, self.id) < (c2, p))
               and each(p in s, has=received(('ack', c, p))))
         -- critical_section
+        end_time = time.time()
         task()
         -- release
-        end_time = time.time()
+
         # lamutex_resptime.append(int(end_time - start_time))
         send(('release', c, self.id), to=s)
         # lamutex_resptime.app
@@ -96,6 +149,95 @@ class lamutex(process):
         send(('lamutex_rddone', self.id, rep, req_count),to=parentid)
         # send(('done', self.id), to=time_proc)
 
+
+class ramutex(process):
+    def setup(s:set, n:int, parentid:int, rep: int, req_count:int):           # pass in set of all processes
+        self.ownc = 0
+
+    def cs(task):
+        --request
+        ownc = logical_clock()
+        start_time = time.time()
+        send(('request', ownc, self.id), to=s)    # send request to all processes
+        await(each(p in s,
+                   has=some(received(('ack', c, p)), has=(c > ownc))))
+        --cs
+        end_time = time.time()
+        task()                  # critical section
+        --release
+
+        send(('ack', logical_clock(), self.id),
+             to=setof(p, p in s,
+                      some(received(('request', c, p)),
+                           has=((c, p) >= (ownc, self.id)))))
+        send(('ramutex_waitt', int((end_time - start_time)*1000), self.id), to=parentid)
+
+    def receive(msg=('request', c, p)):
+        if each(received(('request', _c, self.id)), has=((c, p) < (ownc, self.id))):
+            send(('ack', logical_clock(), self.id), to=p)
+
+    def run():
+        def anounce():
+            output('in cs')
+        for i in range(n):
+            cs(anounce)
+        send(('Done',), to=s)
+        await(each(p in s, has= received(('Done',), from_=p)))
+        output("Done!")
+        send(('ramutex_rddone', self.id, rep, req_count),to=parentid)
+
+class ratoken(process):
+    def setup(ps:set, nrounds:int, orig_token:bool, parentid:int, rep: int, req_count:int):
+        self.clock = 0
+        self.token = dict((p, 0) for p in ps)
+
+    def cs(task):
+        --request
+        start_time = time.time()
+        if not token_present():
+            clock += 1
+            send(('request', clock, self.id), to=ps)
+            await(token_present())
+        token[self.id] = clock
+        end_time = time.time()
+        task()                  # critical section
+
+        --release
+        send(('ratoken_waitt', int((end_time - start_time)*1000), self.id), to=parentid)
+        for p in ps:
+            if request_pending(p) and token_present():
+                #output("sending %r-> %r" % (token, p))
+                send(('access', token), to=p)
+                break
+
+    def receive(msg=('access', newtok)):
+        token = newtok
+
+    def receive(msg=('request', c, p)):
+        if request_pending(p) and token_present():
+            send(('access', token), to=p)
+
+    def request_pending(p):
+        # p has a request after it last had the token
+        return some(received(('request', c, _p)), has=(c > token[p]))
+
+    def token_present():
+        return (orig_token and not some(sent(('access', _))) or
+                some(received(('access', token1)),
+                     has= (not some(sent(('access', token2)),
+                                    has= (token2[self.id] > token1[self.id])))))
+
+    def run():
+        def anounce():
+            output("In cs!")
+        if token_present():
+            output("I'm lucky!")
+        for i in range(nrounds):
+            cs(anounce)
+        send(('Done',), to=ps)
+        await(each(p in ps, has= received(('Done',), from_=p)))
+        output("Done!")
+        send(('ratoken_rddone', self.id, rep, req_count),to=parentid)
 #function to generate an equispaced array for all cases where splits might not be exactly divisible
 # example: gen_equispaced_array(4,5) asks to split 4 into 5 splits generates [1,1,1,1,0]
 def gen_equispaced_array(limit, num_splits):
