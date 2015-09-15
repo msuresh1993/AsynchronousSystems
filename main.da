@@ -1,12 +1,71 @@
 import sys
 import math
 import numpy as np
+import time
+import matplotlib.pyplot as plt
+# class timeKeeper(process):
+#     def setup(s:set):
+#         pass
+#     def receive(msg=('gaga', c, p)):
+#         print("Dad")
+#     def draw_graphs():
+#         pass
+#     def run():
+#         -- dsd
+#         await(each(p in s, has= some(received(('done', p)))))
+#         draw_graphs()
+lamutex_resptime = []
+class driverclass(process):
+    def setup(p:int, r:int, n:int ,s:int ,m:int): pass
+
+    def draw_waittime_vs_reqnum(N, lamutex, req_num):
+        print(lamutex, req_num)
+        fig1 = plt.figure()
+        ax1 = fig1.add_subplot(111)
+        ax1.plot(req_num, lamutex)
+        ax1.axis((min(req_num)-1,max(req_num)+1, min(lamutex)-1, max(lamutex)+1))
+        fig2 = plt.figure()
+        ax2 = fig1.add_subplot(111)
+        ax2.plot(req_num, lamutex)
+        plt.show()
+
+    def receive(msg=('lamutex_waitt', waittime, id)):
+        lamutex_resptime.append(waittime)
+    def run():
+        config(channel='fifo', clock='Lamport')
+        req_ea_round = [int(math.ceil(x)) for x in np.linspace(0,r, s+1).tolist()]
+        lamu_graphline = []
+        req_count = 0
+        for req in req_ea_round[1:]:
+            req_sum = 0
+            for i in range(m):
+                ps = new(lamutex, num= p)
+                # setup(time_proc,(set(ps)))
+                # start(timekeeper_set)
+                req_per_process = gen_equispaced_array(req, p)
+                index = 0
+                for pr in ps:
+                    setup(pr, (ps-{pr}, req_per_process[index], self.id, i, req_count))
+                    index = index + 1
+                start(ps)
+                await(each(pr in ps, has=some(received(('lamutex_rddone',pr, _i, _req_count)))))
+                req_sum = req_sum + sum(lamutex_resptime)/len(lamutex_resptime)
+                lamutex_resptime.clear()
+            lamu_graphline.append(req_sum/m)
+            req_count = req_count + 1
+        draw_waittime_vs_reqnum(len(lamu_graphline), lamu_graphline, req_ea_round[1:])
+
+
+
+
+
 class lamutex(process):
-    def setup(s:set, nrequests:int): pass  # s is set of all other processes
+    def setup(s:set, nrequests:int, parentid:int, rep: int, req_count:int): pass  # s is set of all other processes
 
     def mutex(task):
         -- request
         c = logical_clock()
+        start_time = time.time()
         send(('request', c, self.id), to=s)
         await(each(received(('request', c2, p)),
                    has=received(('release', c2, p)) or (c, self.id) < (c2, p))
@@ -14,7 +73,12 @@ class lamutex(process):
         -- critical_section
         task()
         -- release
+        end_time = time.time()
+        # lamutex_resptime.append(int(end_time - start_time))
         send(('release', c, self.id), to=s)
+        # lamutex_resptime.app
+        # end((end_time - start_time, self.id))
+        send(('lamutex_waitt', int((end_time - start_time)*1000), self.id), to=parentid)
 
     def receive(msg=('request', c, p)):
         send(('ack', c, self.id), to=p)
@@ -27,7 +91,10 @@ class lamutex(process):
 
         send(('done', self.id), to=s)
         await(each(p in s, has=received(('done', p))))
+
         output('terminating')
+        send(('lamutex_rddone', self.id, rep, req_count),to=parentid)
+        # send(('done', self.id), to=time_proc)
 
 #function to generate an equispaced array for all cases where splits might not be exactly divisible
 # example: gen_equispaced_array(4,5) asks to split 4 into 5 splits generates [1,1,1,1,0]
@@ -52,14 +119,6 @@ def main():
     s = int(sys.argv[4]) if len(sys.argv) > 3 else 1 #number of different runs (s)
     m = int(sys.argv[5]) if len(sys.argv) > 4 else 1 #number of repetitions (m)
 
-    # region : running lamutex
-    config(channel='fifo', clock='Lamport')
-    # region performance testing
-    ps = new(lamutex, num= p)
-    req_ea_round = [np.linspace(0,r, s).toarray(), lambda x:int(x)]
-    gen_equispaced_array(limit, num_splits)
-    req_per_process = r / p
-    for p in ps: setup(p, (ps-{p}, nrequests))
-
-    #end region : performance testing
-    # endregion
+    driver = new(driverclass, num=1)
+    setup(driver, (p, r, n, s, m))
+    start(driver)
