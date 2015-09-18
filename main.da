@@ -3,57 +3,301 @@ import math
 import numpy as np
 import time
 import matplotlib.pyplot as plt
-# class timeKeeper(process):
-#     def setup(s:set):
-#         pass
-#     def receive(msg=('gaga', c, p)):
-#         print("Dad")
-#     def draw_graphs():
-#         pass
-#     def run():
-#         -- dsd
-#         await(each(p in s, has= some(received(('done', p)))))
-#         draw_graphs()
-lamutex_resptime = []
-ramutex_resptime = []
-ratoken_resptime = []
-class driverclass(process):
-    def setup(p:int, r:int, n:int ,s:int ,m:int): pass
 
-    def draw_waittime_vs_reqnum(N,req_num, lamutex,ramutex, ratoken):
+
+#this section could be inside driver class.setup but do not want to break anything.
+lamutex_waittime = []
+ramutex_waittime = []
+ratoken_waittime = []
+
+lamutex_turnaroundtime = []
+ramutex_turnaroundtime = []
+ratoken_turnaroundtime = []
+#end section
+
+class driverclass(process):
+    def setup(p:int, r:int, n:int ,s:int ,m:int):
+        self.live_la = {}
+        self.live_ra = {}
+        self.live_rato = {}
+        self.messages_la = 0
+        self.messages_ra = 0
+        self.messages_rato = 0
+        self.safety_la = []
+        self.safety_ra = []
+        self.safety_rato = []
+    def draw_waittime_vs_reqnum(N,req_num, lamutex,ramutex, ratoken, lamutex_tot,ramutex_tot, ratoken_tot, lamutex_msg,ramutex_msg, ratoken_msg):
         print(lamutex, ramutex, req_num)
         fig1, ax1 = plt.subplots()
-        fig1.suptitle('Waiting Time Graph')
+        fig1.suptitle('Waiting Time to enter CS Graph')
         # ax1 = fig1.add_subplot(111)
         ax1.plot(req_num, lamutex,'r', label="La Mutex")
         ax1.plot(req_num, ramutex,'b', label="Ra Mutex")
-        ax1.plot(req_num, ratoken,'g', label="Ra Token")
+        ax1.plot(req_num, ratoken,'y', label="Ra Token")
         plt.legend(loc=2, borderaxespad=0.)
         ax1.set_xlabel("number of request(s)")
-        ax1.set_ylabel("average waiting time")
+        ax1.set_ylabel("average waiting time(x1000)")
         lower_limit_y = min((min(lamutex), min(ramutex), min(ratoken))) - 1
         upper_limit_y = max((max(lamutex), max(ramutex), min(ratoken))) + 1
         ax1.axis((min(req_num)-1,max(req_num)+1, lower_limit_y, upper_limit_y))
+
+        print(lamutex_tot, ramutex_tot, ratoken_tot)
+        fig2, ax2 = plt.subplots()
+        fig2.suptitle('Turnaround Time to finish job Graph')
+        # ax1 = fig1.add_subplot(111)
+        ax2.plot(req_num, lamutex_tot,'r', label="La Mutex")
+        ax2.plot(req_num, ramutex_tot,'b', label="Ra Mutex")
+        ax2.plot(req_num, ratoken_tot,'y', label="Ra Token")
+        plt.legend(loc=2, borderaxespad=0.)
+        ax2.set_xlabel("number of request(s)")
+        ax2.set_ylabel("average turnaround time(x100)")
+        lower_limit_y = min((min(lamutex_tot), min(ramutex_tot), min(ratoken_tot))) - 1
+        upper_limit_y = max((max(lamutex_tot), max(ramutex_tot), max(ratoken_tot))) + 1
+        ax2.axis((min(req_num)-1,max(req_num)+1, lower_limit_y, upper_limit_y))
+
+        fig3, ax3 = plt.subplots()
+        fig3.suptitle('Average number of messages passed Vs number of Requests')
+        # ax1 = fig1.add_subplot(111)
+        ax3.plot(req_num, lamutex_msg,'r', label="La Mutex")
+        ax3.plot(req_num, ramutex_msg,'b', label="Ra Mutex")
+        ax3.plot(req_num, ratoken_msg,'y', label="Ra Token")
+        plt.legend(loc=2, borderaxespad=0.)
+        ax3.set_xlabel("number of request(s)")
+        ax3.set_ylabel("average messages passed/request")
+        lower_limit_y = min((min(lamutex_msg), min(ramutex_msg), min(ratoken_msg))) - 1
+        upper_limit_y = max((max(lamutex_msg), max(ramutex_msg), max(ratoken_msg))) + 1
+        ax3.axis((min(req_num)-1,max(req_num)+1, lower_limit_y, upper_limit_y))
         plt.show()
 
     def receive(msg=('lamutex_waitt', waittime, id)):
-        lamutex_resptime.append(waittime)
+        lamutex_waittime.append(waittime)
 
     def receive(msg=('ramutex_waitt', waittime, id)):
-        ramutex_resptime.append(waittime)
+        ramutex_waittime.append(waittime)
 
     def receive(msg=('ratoken_waitt', waittime, id)):
-        ratoken_resptime.append(waittime)
+        ratoken_waittime.append(waittime)
+
+    def receive(msg=('lamutex_tat', waittime, id)):
+        lamutex_turnaroundtime.append(waittime)
+
+    def receive(msg=('ramutex_tat', waittime, id)):
+        ramutex_turnaroundtime.append(waittime)
+
+    def receive(msg=('ratoken_tat', waittime, id)):
+        ratoken_turnaroundtime.append(waittime)
+
+    def receive(msg=('lamutex_live', total_req, sat_req, id, messages)):
+        if id in self.live_la.keys():
+            self.live_la[id][0] += total_req
+            self.live_la[id][1] += sat_req
+        else:
+            self.live_la[id] = [total_req, sat_req]
+        self.messages_la += messages
+        # send(msg=('lamutex_end', id, rep, req_count))
+
+
+    def receive(msg=('ramutex_live', total_req, sat_req, id, messages)):
+
+        if id in self.live_ra.keys():
+            self.live_ra[id][0] += total_req
+            self.live_ra[id][1] += sat_req
+        else:
+            self.live_ra[id] = [total_req, sat_req]
+
+        self.messages_ra += messages
+
+    def receive(msg=('ratoken_live', total_req, sat_req, id, messages)):
+        if id in self.live_rato.keys():
+            self.live_rato[id][0] += total_req
+            self.live_rato[id][1] += sat_req
+        else:
+            self.live_rato[id] = [total_req, sat_req]
+        self.messages_rato += messages
+
+    def receive(msg=('lamutex_CS', msg, time, pid)):
+        self.safety_la.append((msg, pid, time))
+
+    def receive(msg=('ramutex_CS', msg, time, pid)):
+        self.safety_ra.append((msg, pid, time))
+
+    def receive(msg=('ratoken_CS', msg, time, pid)):
+        self.safety_rato.append((msg, pid, time))
 
     def run():
+
         config(channel='fifo', clock='Lamport')
+        temp = -5
+        for i in range(n):
+            ps = new(lamutex, num=p)
+            req_per_process = gen_equispaced_array(r, p)
+            print(req_per_process)
+            index = 0
+            for pr in ps:
+                setup(pr, (ps-{pr}, req_per_process[index], self.id, i, temp))
+                index = index + 1
+            start(ps)
+            await(each(pr in ps, has=some(received(('lamutex_rddone',_pr, _i, _temp)))))
+            # await(each)
+
+        for i in range(n):
+            ps = new(ramutex, num=p)
+            req_per_process = gen_equispaced_array(r, p)
+            print(req_per_process)
+            index = 0
+            for pr in ps:
+                setup(pr, (ps-{pr}, req_per_process[index], self.id, i, temp))
+                index = index + 1
+            start(ps)
+            await(each(pr in ps, has=some(received(('ramutex_rddone',_pr, _i, _temp)))))
+
+        for i in range(n):
+            ps = new(ratoken, num=p)
+            req_per_process = gen_equispaced_array(r, p)
+            # print(req_per_process)
+            # index = 0
+            # for pr in ps:
+            #     setup(pr, (ps-{pr}, req_per_process[index], self.id, i, temp))
+            #     index = index + 1
+            # start(ps)
+            # await(each(pr in ps, has=some(received(('ratoken_rddone',_pr, _i, _temp)))))
+            index = 0
+            pz = ps.pop()
+            setup([pz], (ps|{pz}, req_per_process[index], True, self.id, i, temp))
+            index = index + 1
+            for pr in ps:
+                setup(pr, (ps|{pz}, req_per_process[index], False, self.id, i, temp))
+                index = index + 1
+            start(ps|{pz})
+            await(each(pr in ps, has=some(received(('ratoken_rddone', _pr, _i, _temp)))))
+        liveness_log = open("liveness.log", "w")
+        check = 0
+        req_sent = 0
+        req_rec = 0
+        liveness_log.write(" Liveness log for lamutex: \n")
+        for ids in self.live_la.keys():
+            if self.live_la[ids][0] != self.live_la[ids][1]:
+                print("liveness not satisfied for lamutex")
+                check = 1
+            strin = str(self.live_la[ids][0]) + ", " + str(self.live_la[ids][1])
+            req_sent = req_sent + self.live_la[ids][0]
+            req_rec = req_rec + self.live_la[ids][1]
+            liveness_log.write("Number of requests sent by "+ids.getlogname() +  " are " + str(self.live_la[ids][0]) + " Number of requests granted are : " +  str(self.live_la[ids][1]))
+            liveness_log.write("\n")
+        if check == 0:
+            print("liveness is satisfied for LAMutex. total requests sent : ",req_sent, "total requests received : ", req_rec, "See Liveness.log for process wise breakdown of requests and requests granted")
+
+        check = 0
+        req_sent = 0
+        req_rec = 0
+        liveness_log.write(" Liveness log for ramutex: \n")
+        for ids in self.live_ra.keys():
+            if self.live_ra[ids][0] != self.live_ra[ids][1]:
+                print("liveness not satisfied for ra mutex")
+                check = 1
+            strin = str(self.live_ra[ids][0]) + ", " + str(self.live_ra[ids][1])
+            req_sent = req_sent + self.live_ra[ids][0]
+            req_rec = req_rec + self.live_ra[ids][1]
+            liveness_log.write("Number of requests sent by "+ids.getlogname() +  " are " + str(self.live_ra[ids][0]) + " Number of requests granted are : " +  str(self.live_ra[ids][1]))
+            liveness_log.write("\n")
+        if check == 0:
+            print("liveness is satisfied for RAMutex. total requests sent : ",req_sent, "total requests received : ", req_rec, "See Liveness.log for process wise breakdown of requests and requests granted")
+
+        check = 0
+        req_sent = 0
+        req_rec = 0
+        liveness_log.write(" Liveness log for ratoken: \n")
+        for ids in self.live_rato.keys():
+            if self.live_rato[ids][0] != self.live_rato[ids][1]:
+                print("liveness not satisfied for ra token")
+                check = 1
+            strin = str(self.live_rato[ids][0]) + ", " + str(self.live_rato[ids][1])
+            req_sent = req_sent + self.live_rato[ids][0]
+            req_rec = req_rec + self.live_rato[ids][1]
+            liveness_log.write("Number of requests sent by "+ids.getlogname() +  " are " + str(self.live_rato[ids][0]) + " Number of requests granted are : " +  str(self.live_rato[ids][1]))
+            liveness_log.write("\n")
+        if check == 0:
+            print("liveness is satisfied for RAToken. total requests sent : ",req_sent, "total requests received : ", req_rec, "See Liveness.log for process wise breakdown of requests and requests granted")
+
+        self.safety_la = sorted(self.safety_la, key=lambda x: x[2])
+        check = 0
+        count = 0
+        while len(self.safety_la) != 0:
+            count += 1
+            entry = safety_la.pop(0)
+            exito =safety_la.pop(0)
+            if(not(entry[0] == 'entering' and exito[0] == 'exiting' and entry[1] == exito[1])):
+                check = 1
+
+                print(" Safety condition violated for La Mutex. See log for more details.")
+
+        if check == 0:
+            print( "Safety condition satisfied for La Mutex. Total entries and exits made in order : ", count, " Check safety.log for more details")
+
+        self.safety_ra = sorted(self.safety_ra, key=lambda x: x[2])
+        check = 0
+        count = 0
+        while len(self.safety_ra) != 0:
+            count += 1
+            entry = safety_ra.pop(0)
+            exito =safety_ra.pop(0)
+            if(not(entry[0] == 'entering' and exito[0] == 'exiting' and entry[1] == exito[1])):
+                check = 1
+
+                print(" Safety condition violated for Ra Mutex. See log for more details.")
+
+
+        if check == 0:
+            print( "Safety condition satisfied for Ra Mutex. Total entries and exits made in order : ", count, " Check safety.log for more details")
+
+        self.safety_rato = sorted(self.safety_rato, key=lambda x: x[2])
+        check = 0
+        count = 0
+        while len(self.safety_rato) != 0:
+            count += 1
+            entry = safety_rato.pop(0)
+            exito =safety_rato.pop(0)
+            if(not(entry[0] == 'entering' and exito[0] == 'exiting' and entry[1] == exito[1])):
+                check = 1
+                print(entry, exito)
+                print(" Safety condition violated for ra Token. See log for more details.")
+
+        if check == 0:
+            print( "Safety condition satisfied for ra token. Total entries and exits made in order : ", count, " Check safety.log for more details")
+
+        self.live_la = {}
+        self.live_ra = {}
+        self.live_rato = {}
+        self.messages_la = 0
+        self.messages_ra = 0
+        self.messages_rato = 0
+        #da
+        #
+        #
+        #
+        #
+        #performance
+        lamutex_waittime.clear()
+        ramutex_waittime.clear()
+        ratoken_waittime.clear()
+
+        lamutex_turnaroundtime.clear()
+        ramutex_turnaroundtime.clear()
+        ratoken_turnaroundtime.clear()
         req_ea_round = [int(math.ceil(x)) for x in np.linspace(0, r, s+1).tolist()]
         lamu_graphline = []
         ramu_graphline = []
         rato_graphline = []
+        lamu_tat_graphline = []
+        ramu_tat_graphline = []
+        rato_tat_graphline = []
+        lamu_msg_graphline = []
+        ramu_msg_graphline = []
+        rato_msg_graphline = []
         req_count = 0
         for req in req_ea_round[1:]:
             req_sum = 0
+            tat_sum = 0
             for i in range(m):
                 ps = new(lamutex, num= p)
                 # setup(time_proc,(set(ps)))
@@ -64,14 +308,20 @@ class driverclass(process):
                     setup(pr, (ps-{pr}, req_per_process[index], self.id, i, req_count))
                     index = index + 1
                 start(ps)
-                await(each(pr in ps, has=some(received(('lamutex_rddone',pr, _i, _req_count)))))
-                req_sum = req_sum + sum(lamutex_resptime)/len(lamutex_resptime)
-                lamutex_resptime.clear()
+                await(each(pr in ps, has=some(received(('lamutex_rddone',_pr, _i, _req_count)))))
+                req_sum = req_sum + sum(lamutex_waittime)/len(lamutex_waittime)
+                tat_sum = tat_sum + sum(lamutex_turnaroundtime)/ len(lamutex_turnaroundtime)
+                lamutex_waittime.clear()
+                lamutex_turnaroundtime.clear()
+            lamu_msg_graphline.append(int(self.messages_la/(r*m)))
+            self.messages_la = 0
             lamu_graphline.append(req_sum/m)
+            lamu_tat_graphline.append(tat_sum/m)
             req_count = req_count + 1
         req_count = 0
         for req in req_ea_round[1:]:
             req_sum = 0
+            tat_sum = 0
             for i in range(m):
                 ps = new(ramutex, num = p)
                 req_per_process = gen_equispaced_array(req, p)
@@ -80,15 +330,21 @@ class driverclass(process):
                     setup(pr, (ps-{pr}, req_per_process[index], self.id, i, req_count))
                     index = index + 1
                 start(ps)
-                await(each(pr in ps, has=some(received(('ramutex_rddone', pr, _i, _req_count)))))
-                req_sum = req_sum + sum(ramutex_resptime)/len(ramutex_resptime)
-                ramutex_resptime.clear()
+                await(each(pr in ps, has=some(received(('ramutex_rddone', _pr, _i, _req_count)))))
+                req_sum = req_sum + sum(ramutex_waittime)/len(ramutex_waittime)
+                tat_sum = tat_sum + sum(ramutex_turnaroundtime)/ len(ramutex_turnaroundtime)
+                ramutex_waittime.clear()
+                ramutex_turnaroundtime.clear()
+            ramu_msg_graphline.append(int(self.messages_ra/(r*m)))
+            self.messages_ra = 0
             ramu_graphline.append(req_sum/m)
+            ramu_tat_graphline.append(tat_sum/m)
             req_count = req_count + 1
 
         req_count = 0
         for req in req_ea_round[1:]:
             req_sum = 0
+            tat_sum = 0
             for i in range(m):
                 ps = new(ratoken, num = p)
                 req_per_process = gen_equispaced_array(req, p)
@@ -100,41 +356,56 @@ class driverclass(process):
                     setup(pr, (ps|{pz}, req_per_process[index], False, self.id, i, req_count))
                     index = index + 1
                 start(ps|{pz})
-                await(each(pr in ps, has=some(received(('ratoken_rddone', pr, _i, _req_count)))))
-                req_sum = req_sum + sum(ratoken_resptime)/len(ratoken_resptime)
-                ratoken_resptime.clear()
+                await(each(pr in ps, has=some(received(('ratoken_rddone', _pr, _i, _req_count)))))
+                req_sum = req_sum + sum(ratoken_waittime)/len(ratoken_waittime)
+                tat_sum = tat_sum + sum(ratoken_turnaroundtime)/ len(ratoken_turnaroundtime)
+                ratoken_waittime.clear()
+                ratoken_turnaroundtime.clear()
+            rato_msg_graphline.append(int(self.messages_rato/(r*m)))
+            self.messages_rato = 0
             rato_graphline.append(req_sum/m)
+            rato_tat_graphline.append(tat_sum/m)
             req_count = req_count + 1
-        draw_waittime_vs_reqnum(len(lamu_graphline),req_ea_round[1:], lamu_graphline,ramu_graphline, rato_graphline)
+        draw_waittime_vs_reqnum(len(lamu_graphline),req_ea_round[1:], lamu_graphline,ramu_graphline, rato_graphline, lamu_tat_graphline,ramu_tat_graphline, rato_tat_graphline, lamu_msg_graphline,ramu_msg_graphline, rato_msg_graphline)
+
 
 
 
 
 
 class lamutex(process):
-    def setup(s:set, nrequests:int, parentid:int, rep: int, req_count:int): pass  # s is set of all other processes
-
+    def setup(s:set, nrequests:int, parentid:int, rep: int, req_count:int):  # s is set of all other processes
+        self.start_time = time.time()
+        self.entered = 0
+        self.total_messages = 0
+        self.size_s = len(s)
     def mutex(task):
         -- request
         c = logical_clock()
-        start_time = time.time()
+        self.start_time = time.time()
         send(('request', c, self.id), to=s)
+        self.total_messages += self.size_s
         await(each(received(('request', c2, p)),
                    has=received(('release', c2, p)) or (c, self.id) < (c2, p))
               and each(p in s, has=received(('ack', c, p))))
         -- critical_section
+        send(('lamutex_CS', 'entering',time.time(), self.id), to=parentid)
+        self.entered = self.entered + 1
         end_time = time.time()
         task()
+        send(('lamutex_CS', 'exiting',time.time(), self.id), to=parentid)
         -- release
 
         # lamutex_resptime.append(int(end_time - start_time))
         send(('release', c, self.id), to=s)
+        self.total_messages += self.size_s
         # lamutex_resptime.app
         # end((end_time - start_time, self.id))
-        send(('lamutex_waitt', int((end_time - start_time)*1000), self.id), to=parentid)
+        send(('lamutex_waitt', int((end_time - self.start_time)*1000), self.id), to=parentid)
 
     def receive(msg=('request', c, p)):
         send(('ack', c, self.id), to=p)
+        self.total_messages += 1
 
     def run():
         def task(): output('in cs')
@@ -144,7 +415,8 @@ class lamutex(process):
 
         send(('done', self.id), to=s)
         await(each(p in s, has=received(('done', p))))
-
+        send(('lamutex_tat', int((time.time() - self.start_time)*100), self.id), to=parentid)
+        send(('lamutex_live', nrequests, self.entered , self.id, self.total_messages), to=parentid)
         output('terminating')
         send(('lamutex_rddone', self.id, rep, req_count),to=parentid)
         # send(('done', self.id), to=time_proc)
@@ -153,27 +425,37 @@ class lamutex(process):
 class ramutex(process):
     def setup(s:set, n:int, parentid:int, rep: int, req_count:int):           # pass in set of all processes
         self.ownc = 0
-
+        self.start_time =time.time()
+        self.total_messages = 0
+        self.size_s = len(s)
+        self.entered = 0
+        self.last = None
     def cs(task):
         --request
         ownc = logical_clock()
-        start_time = time.time()
+        self.start_time = time.time()
+        self.last = (ownc, self.id)
         send(('request', ownc, self.id), to=s)    # send request to all processes
+        self.total_messages += 2*self.size_s
         await(each(p in s,
-                   has=some(received(('ack', c, p)), has=(c > ownc))))
-        --cs
-        end_time = time.time()
-        task()                  # critical section
-        --release
+                   has=some(received(('ack', c, _p)), has=(c > self.ownc))))
 
+        --cs
+        send(('ramutex_CS', 'entering',time.time(), self.id), to=parentid)
+        end_time = time.time()
+        self.entered +=1
+        task()                  # critical section
+        send(('ramutex_CS', 'exiting',time.time(), self.id), to=parentid)
+        --release
+        self.last = None
         send(('ack', logical_clock(), self.id),
              to=setof(p, p in s,
                       some(received(('request', c, p)),
                            has=((c, p) >= (ownc, self.id)))))
-        send(('ramutex_waitt', int((end_time - start_time)*1000), self.id), to=parentid)
+        send(('ramutex_waitt', int((end_time - self.start_time)*1000), self.id), to=parentid)
 
     def receive(msg=('request', c, p)):
-        if each(received(('request', _c, self.id)), has=((c, p) < (ownc, self.id))):
+        if self.last == None or (c, p) < self.last:
             send(('ack', logical_clock(), self.id), to=p)
 
     def run():
@@ -181,8 +463,11 @@ class ramutex(process):
             output('in cs')
         for i in range(n):
             cs(anounce)
+
         send(('Done',), to=s)
         await(each(p in s, has= received(('Done',), from_=p)))
+        send(('ramutex_tat', int((time.time() - self.start_time)*100), self.id), to=parentid)
+        send(('ramutex_live', n, self.entered , self.id, self.total_messages), to=parentid)
         output("Done!")
         send(('ramutex_rddone', self.id, rep, req_count),to=parentid)
 
@@ -190,20 +475,26 @@ class ratoken(process):
     def setup(ps:set, nrounds:int, orig_token:bool, parentid:int, rep: int, req_count:int):
         self.clock = 0
         self.token = dict((p, 0) for p in ps)
-
+        self.start_time = time.time()
+        self.total_messages = 0
+        self.size_s = len(ps)
+        self.entered = 0
     def cs(task):
         --request
-        start_time = time.time()
+        self.start_time = time.time()
         if not token_present():
             clock += 1
             send(('request', clock, self.id), to=ps)
+            self.total_messages += self.size_s
             await(token_present())
         token[self.id] = clock
         end_time = time.time()
+        self.entered += 1
+        send(('ratoken_CS', 'entering',time.time(), self.id), to=parentid)
         task()                  # critical section
-
+        send(('ratoken_CS', 'exiting',time.time(), self.id), to=parentid)
         --release
-        send(('ratoken_waitt', int((end_time - start_time)*1000), self.id), to=parentid)
+        send(('ratoken_waitt', int((end_time - self.start_time)*1000), self.id), to=parentid)
         for p in ps:
             if request_pending(p) and token_present():
                 #output("sending %r-> %r" % (token, p))
@@ -216,6 +507,7 @@ class ratoken(process):
     def receive(msg=('request', c, p)):
         if request_pending(p) and token_present():
             send(('access', token), to=p)
+            self.total_messages += 1
 
     def request_pending(p):
         # p has a request after it last had the token
@@ -236,6 +528,8 @@ class ratoken(process):
             cs(anounce)
         send(('Done',), to=ps)
         await(each(p in ps, has= received(('Done',), from_=p)))
+        send(('ratoken_tat', int((time.time() - self.start_time)*100), self.id), to=parentid)
+        send(('ratoken_live', nrounds, self.entered , self.id, self.total_messages), to=parentid)
         output("Done!")
         send(('ratoken_rddone', self.id, rep, req_count),to=parentid)
 #function to generate an equispaced array for all cases where splits might not be exactly divisible
@@ -260,7 +554,7 @@ def main():
     n = int(sys.argv[3]) if len(sys.argv) > 2 else 1 #number of runs for correctness testing (n)
     s = int(sys.argv[4]) if len(sys.argv) > 3 else 1 #number of different runs (s)
     m = int(sys.argv[5]) if len(sys.argv) > 4 else 1 #number of repetitions (m)
-
+    config(channel='fifo', clock='Lamport')
     driver = new(driverclass, num=1)
     setup(driver, (p, r, n, s, m))
     start(driver)
