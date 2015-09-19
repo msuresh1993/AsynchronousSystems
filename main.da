@@ -450,6 +450,9 @@ class driverclass(process):
             req_count = req_count + 1
         draw_waittime_vs_reqnum(len(lamu_graphline),req_ea_round[1:], lamu_graphline,ramu_graphline, rato_graphline, lamu_tat_graphline,ramu_tat_graphline, rato_tat_graphline, lamu_msg_graphline,ramu_msg_graphline, rato_msg_graphline)
 
+        #
+        #
+        #
         output(" The graphs show performance measurements for three algorithms - Lamport Mutex, Ricart-Agarwala and RA Token. ")
         output(" Note: Close these graph windows and open output.txt to see the correctness output.")
 

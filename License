@@ -26,7 +26,7 @@ Most of DistAlgo is covered by the terms of the following (MIT) license:
 Modifications:
 Please see each individual source file for a list of copyright holders.
 
-I have taken the codes for ramutex, lamutex and ratoken the distalgo/examples folder.
+I have taken the codes for ramutex, lamutex and ratoken the distalgo/examples folder [examples/lamutex/spec.da examples/ramutex/spec.da examples/ratoken/spec.da]
 
 I have added my own logging messages that are sent to the driver.
 I have added a few extra parameters to the setup function that were needed for testing

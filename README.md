@@ -1,6 +1,6 @@
 AsynchronousSystems - Assignment 2
 Name: Muthukumar Suresh
-
+NOTE: You must close the graph windows after you run to see the other outputs and so that the output.txt is generated. 
 
 Algorithms Implemented: La Mutex (Lamport Mutex)
                         Ra Mutex ( Ricart- Agarwala Mutex)
