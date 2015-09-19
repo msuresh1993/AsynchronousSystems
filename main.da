@@ -30,7 +30,6 @@ class driverclass(process):
         self.fairness_ra = {}
         self.fairness_rato = {}
     def draw_waittime_vs_reqnum(N,req_num, lamutex,ramutex, ratoken, lamutex_tot,ramutex_tot, ratoken_tot, lamutex_msg,ramutex_msg, ratoken_msg):
-        print(lamutex, ramutex, req_num)
         fig1, ax1 = plt.subplots()
         fig1.suptitle('Waiting Time to enter CS Graph')
         # ax1 = fig1.add_subplot(111)
@@ -44,7 +43,6 @@ class driverclass(process):
         upper_limit_y = max((max(lamutex), max(ramutex), min(ratoken))) + 1
         ax1.axis((min(req_num)-1,max(req_num)+1, lower_limit_y, upper_limit_y))
 
-        print(lamutex_tot, ramutex_tot, ratoken_tot)
         fig2, ax2 = plt.subplots()
         fig2.suptitle('Turnaround Time to finish job Graph')
         # ax1 = fig1.add_subplot(111)
@@ -148,11 +146,11 @@ class driverclass(process):
     def run():
 
         config(channel='fifo', clock='Lamport')
+        otpt = open("output.txt","w")
         temp = -5
         for i in range(n):
             ps = new(lamutex, num=p)
             req_per_process = gen_equispaced_array(r, p)
-            print(req_per_process)
             index = 0
             for pr in ps:
                 setup(pr, (ps-{pr}, req_per_process[index], self.id, i, temp))
@@ -164,7 +162,6 @@ class driverclass(process):
         for i in range(n):
             ps = new(ramutex, num=p)
             req_per_process = gen_equispaced_array(r, p)
-            print(req_per_process)
             index = 0
             for pr in ps:
                 setup(pr, (ps-{pr}, req_per_process[index], self.id, i, temp))
@@ -175,7 +172,6 @@ class driverclass(process):
         for i in range(n):
             ps = new(ratoken, num=p)
             req_per_process = gen_equispaced_array(r, p)
-            # print(req_per_process)
             # index = 0
             # for pr in ps:
             #     setup(pr, (ps-{pr}, req_per_process[index], self.id, i, temp))
@@ -198,7 +194,7 @@ class driverclass(process):
         liveness_log.write(" Liveness log for lamutex: \n")
         for ids in self.live_la.keys():
             if self.live_la[ids][0] != self.live_la[ids][1]:
-                print("liveness not satisfied for lamutex")
+                otpt.write("liveness not satisfied for lamutex\n")
                 check = 1
             strin = str(self.live_la[ids][0]) + ", " + str(self.live_la[ids][1])
             req_sent = req_sent + self.live_la[ids][0]
@@ -206,7 +202,7 @@ class driverclass(process):
             liveness_log.write("Number of requests sent by "+ids.getlogname() +  " are " + str(self.live_la[ids][0]) + " Number of requests granted are : " +  str(self.live_la[ids][1]))
             liveness_log.write("\n")
         if check == 0:
-            print("liveness is satisfied for LAMutex. total requests sent : ",req_sent, "total requests received : ", req_rec, "See Liveness.log for process wise breakdown of requests and requests granted")
+            otpt.write("liveness is satisfied for LAMutex. total requests sent : " + str(req_sent) +  "total requests received : " + str(req_rec) +  "See Liveness.log for process wise breakdown of requests and requests granted\n")
 
         check = 0
         req_sent = 0
@@ -214,7 +210,7 @@ class driverclass(process):
         liveness_log.write(" Liveness log for ramutex: \n")
         for ids in self.live_ra.keys():
             if self.live_ra[ids][0] != self.live_ra[ids][1]:
-                print("liveness not satisfied for ra mutex")
+                otpt.write("liveness not satisfied for ra mutex\n")
                 check = 1
             strin = str(self.live_ra[ids][0]) + ", " + str(self.live_ra[ids][1])
             req_sent = req_sent + self.live_ra[ids][0]
@@ -222,7 +218,7 @@ class driverclass(process):
             liveness_log.write("Number of requests sent by "+ids.getlogname() +  " are " + str(self.live_ra[ids][0]) + " Number of requests granted are : " +  str(self.live_ra[ids][1]))
             liveness_log.write("\n")
         if check == 0:
-            print("liveness is satisfied for RAMutex. total requests sent : ",req_sent, "total requests received : ", req_rec, "See Liveness.log for process wise breakdown of requests and requests granted")
+            otpt.write("liveness is satisfied for RAMutex. total requests sent : " + str(req_sent) +  "total requests received : " + str(req_rec) + "See Liveness.log for process wise breakdown of requests and requests granted\n")
 
         check = 0
         req_sent = 0
@@ -230,7 +226,7 @@ class driverclass(process):
         liveness_log.write(" Liveness log for ratoken: \n")
         for ids in self.live_rato.keys():
             if self.live_rato[ids][0] != self.live_rato[ids][1]:
-                print("liveness not satisfied for ra token")
+                otpt.write("liveness not satisfied for ra token\n")
                 check = 1
             strin = str(self.live_rato[ids][0]) + ", " + str(self.live_rato[ids][1])
             req_sent = req_sent + self.live_rato[ids][0]
@@ -238,7 +234,7 @@ class driverclass(process):
             liveness_log.write("Number of requests sent by "+ids.getlogname() +  " are " + str(self.live_rato[ids][0]) + " Number of requests granted are : " +  str(self.live_rato[ids][1]))
             liveness_log.write("\n")
         if check == 0:
-            print("liveness is satisfied for RAToken. total requests sent : ",req_sent, "total requests received : ", req_rec, "See Liveness.log for process wise breakdown of requests and requests granted")
+            otpt.write("liveness is satisfied for RAToken. total requests sent : " + str(req_sent)+ "total requests received : "+ str(req_rec) + "See Liveness.log for process wise breakdown of requests and requests granted\n")
 
 
         safety_log = open("safety.log", 'w')
@@ -254,12 +250,12 @@ class driverclass(process):
             safety_log.write(exito[0] +", "+ str(exito[1].getlogname)+", " + str(exito[2]) + "\n")
             if(not(entry[0] == 'entering' and exito[0] == 'exiting' and entry[1] == exito[1])):
 
-
-                print(" Safety condition violated for La Mutex. See log for more details.")
+                if check != 1:
+                    otpt.write(" Safety condition violated for La Mutex. See log for more details.\n")
                 check = 1
 
         if check == 0:
-            print( "Safety condition satisfied for La Mutex. Total entries and exits made in order : ", count, " Check safety.log for more details")
+            otpt.write( "Safety condition satisfied for La Mutex. Total entries and exits made in order : " + str(count) + " Check safety.log for more details\n")
 
         safety_log.write("Log for Ra Mutex run action, pid, clock time\n" )
         self.safety_ra = sorted(self.safety_ra, key=lambda x: x[2])
@@ -272,13 +268,14 @@ class driverclass(process):
             safety_log.write(entry[0] +"," + str(entry[1].getlogname)+", " + str(entry[2]) + "\n")
             safety_log.write(exito[0] +", "+ str(exito[1].getlogname)+", " + str(exito[2]) + "\n")
             if(not(entry[0] == 'entering' and exito[0] == 'exiting' and entry[1] == exito[1])):
-                check = 1
 
-                print(" Safety condition violated for Ra Mutex. See log for more details.")
+                if check != 1:
+                    otpt.write(" Safety condition violated for Ra Mutex. See log for more details.\n")
+                check = 1
 
 
         if check == 0:
-            print( "Safety condition satisfied for Ra Mutex. Total entries and exits made in order : ", count, " Check safety.log for more details")
+            otpt.write( "Safety condition satisfied for Ra Mutex. Total entries and exits made in order : "+ str(count)+ " Check safety.log for more details\n")
 
         safety_log.write("Log for Ra Token run action, pid, clock time\n" )
         self.safety_rato = sorted(self.safety_rato, key=lambda x: x[2])
@@ -291,12 +288,13 @@ class driverclass(process):
             safety_log.write(entry[0] +"," + str(entry[1].getlogname)+", " + str(entry[2]) + "\n")
             safety_log.write(exito[0] +", "+ str(exito[1].getlogname)+", " + str(exito[2]) + "\n")
             if(not(entry[0] == 'entering' and exito[0] == 'exiting' and entry[1] == exito[1])):
+
+                if check != 1:
+                    otpt.write(" Safety condition violated for ra Token. See log for more details.\n")
                 check = 1
-                print(entry, exito)
-                print(" Safety condition violated for ra Token. See log for more details.")
 
         if check == 0:
-            print( "Safety condition satisfied for ra token. Total entries and exits made in order : ", count, " Check safety.log for more details")
+            otpt.write( "Safety condition satisfied for ra token. Total entries and exits made in order : "+ str(count) + " Check safety.log for more details\n")
 
         fairness_log = open("fairness.log", "w")
         check = 0
@@ -310,10 +308,10 @@ class driverclass(process):
                 fairness_log.write(str(forcheck[ind][0]) +", " + str(forcheck[ind][1].getlogname) +", " + str(forcheck[ind][2]) + "\n")
                 if ll[ind] != forcheck[ind]:
                     check = 1
-                    print("fairness not satisfied for LA Mutex")
+                    otpt.write("fairness not satisfied for LA Mutex\n")
                     break
         if check == 0:
-            print( "Fairness condition satisfied for La Mutex. The exact order of requests granted are in fairness.log which proves fairness")
+            otpt.write( "Fairness condition satisfied for La Mutex. The exact order of requests granted are in fairness.log which proves fairness\n")
 
         check = 0
         #note: for fairness, monotonicity could be tested better but this would do for now.
@@ -326,10 +324,10 @@ class driverclass(process):
                 fairness_log.write(str(forcheck[ind][0]) +", " + str(forcheck[ind][1].getlogname) +", " + str(forcheck[ind][2]) + "\n")
                 if ll[ind] != forcheck[ind]:
                     check = 1
-                    print("fairness not satisfied for Ra Mutex")
+                    otpt.write("fairness not satisfied for Ra Mutex\n")
                     break
         if check == 0:
-            print( "Fairness condition satisfied for RaMutex. The exact order of requests granted are in fairness.log which proves fairness")
+            otpt.write( "Fairness condition satisfied for RaMutex. The exact order of requests granted are in fairness.log which proves fairness\n")
 
         check = 0
         #note: for fairness, monotonicity could be tested better but this would do for now.
@@ -342,10 +340,10 @@ class driverclass(process):
                 fairness_log.write(str(forcheck[ind][0]) +", " + str(forcheck[ind][1].getlogname) +", " + str(forcheck[ind][2]) + "\n")
                 if ll[ind] != forcheck[ind]:
                     if check != 1:
-                        print("fairness not satisfied for Ra Token. See fairness.log")
+                        otpt.write("fairness not satisfied for Ra Token. Note: strict fairness is not guaranteed for Ra Token as a process may enter CS twice if it has token.See fairness.log\n")
                     check = 1
         if check == 0:
-            print( "Fairness condition satisfied for Ra Token. The exact order of requests granted are in fairness.log which proves fairness")
+            otpt.write( "Fairness condition satisfied for Ra Token. The exact order of requests granted are in fairness.log which proves fairness\n")
 
 
 
@@ -452,7 +450,8 @@ class driverclass(process):
             req_count = req_count + 1
         draw_waittime_vs_reqnum(len(lamu_graphline),req_ea_round[1:], lamu_graphline,ramu_graphline, rato_graphline, lamu_tat_graphline,ramu_tat_graphline, rato_tat_graphline, lamu_msg_graphline,ramu_msg_graphline, rato_msg_graphline)
 
-
+        output(" The graphs show performance measurements for three algorithms - Lamport Mutex, Ricart-Agarwala and RA Token. ")
+        output(" Note: Close these graph windows and open output.txt to see the correctness output.")
 
 
 
