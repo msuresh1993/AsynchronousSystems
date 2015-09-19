@@ -27,6 +27,8 @@ class driverclass(process):
         self.safety_ra = []
         self.safety_rato = []
         self.fairness_la = {}
+        self.fairness_ra = {}
+        self.fairness_rato = {}
     def draw_waittime_vs_reqnum(N,req_num, lamutex,ramutex, ratoken, lamutex_tot,ramutex_tot, ratoken_tot, lamutex_msg,ramutex_msg, ratoken_msg):
         print(lamutex, ramutex, req_num)
         fig1, ax1 = plt.subplots()
@@ -130,6 +132,19 @@ class driverclass(process):
             self.fairness_la[rep].append((msg,time,pid, tim))
         else:
             self.fairness_la[rep] = [(msg,time,pid, tim)]
+
+    def receive(msg=('ramutex_fairness', msg, time, rep, pid, tim)):
+        if rep in self.fairness_ra.keys():
+            self.fairness_ra[rep].append((msg,time,pid, tim))
+        else:
+            self.fairness_ra[rep] = [(msg,time,pid, tim)]
+
+    def receive(msg=('ratomutex_fairness', msg, time, rep, pid, tim)):
+        if rep in self.fairness_rato.keys():
+            self.fairness_rato[rep].append((msg,time,pid, tim))
+        else:
+            self.fairness_rato[rep] = [(msg,time,pid, tim)]
+
     def run():
 
         config(channel='fifo', clock='Lamport')
@@ -225,6 +240,9 @@ class driverclass(process):
         if check == 0:
             print("liveness is satisfied for RAToken. total requests sent : ",req_sent, "total requests received : ", req_rec, "See Liveness.log for process wise breakdown of requests and requests granted")
 
+
+        safety_log = open("safety.log", 'w')
+        safety_log.write("Log for La Mutex run action, pid, clock time\n" )
         self.safety_la = sorted(self.safety_la, key=lambda x: x[2])
         check = 0
         count = 0
@@ -232,14 +250,18 @@ class driverclass(process):
             count += 1
             entry = safety_la.pop(0)
             exito =safety_la.pop(0)
+            safety_log.write(entry[0] +"," + str(entry[1].getlogname)+", " + str(entry[2]) + "\n")
+            safety_log.write(exito[0] +", "+ str(exito[1].getlogname)+", " + str(exito[2]) + "\n")
             if(not(entry[0] == 'entering' and exito[0] == 'exiting' and entry[1] == exito[1])):
-                check = 1
+
 
                 print(" Safety condition violated for La Mutex. See log for more details.")
+                check = 1
 
         if check == 0:
             print( "Safety condition satisfied for La Mutex. Total entries and exits made in order : ", count, " Check safety.log for more details")
 
+        safety_log.write("Log for Ra Mutex run action, pid, clock time\n" )
         self.safety_ra = sorted(self.safety_ra, key=lambda x: x[2])
         check = 0
         count = 0
@@ -247,6 +269,8 @@ class driverclass(process):
             count += 1
             entry = safety_ra.pop(0)
             exito =safety_ra.pop(0)
+            safety_log.write(entry[0] +"," + str(entry[1].getlogname)+", " + str(entry[2]) + "\n")
+            safety_log.write(exito[0] +", "+ str(exito[1].getlogname)+", " + str(exito[2]) + "\n")
             if(not(entry[0] == 'entering' and exito[0] == 'exiting' and entry[1] == exito[1])):
                 check = 1
 
@@ -256,6 +280,7 @@ class driverclass(process):
         if check == 0:
             print( "Safety condition satisfied for Ra Mutex. Total entries and exits made in order : ", count, " Check safety.log for more details")
 
+        safety_log.write("Log for Ra Token run action, pid, clock time\n" )
         self.safety_rato = sorted(self.safety_rato, key=lambda x: x[2])
         check = 0
         count = 0
@@ -263,6 +288,8 @@ class driverclass(process):
             count += 1
             entry = safety_rato.pop(0)
             exito =safety_rato.pop(0)
+            safety_log.write(entry[0] +"," + str(entry[1].getlogname)+", " + str(entry[2]) + "\n")
+            safety_log.write(exito[0] +", "+ str(exito[1].getlogname)+", " + str(exito[2]) + "\n")
             if(not(entry[0] == 'entering' and exito[0] == 'exiting' and entry[1] == exito[1])):
                 check = 1
                 print(entry, exito)
@@ -271,23 +298,54 @@ class driverclass(process):
         if check == 0:
             print( "Safety condition satisfied for ra token. Total entries and exits made in order : ", count, " Check safety.log for more details")
 
+        fairness_log = open("fairness.log", "w")
         check = 0
-        # fairness_log = open("fairness.log", "w")
-        # fairness_log.write("Fasfasffa")
-        # #note: for fairness, monotonicity could be tested better but this would do for now.
-        # for rep in self.fairness_la.keys():
-        #     fairness_log.write("Log for La Mutex run" + str(rep)+" : timestamp, clock time, processid " )
-        #     fairness_exit =  [(y, z,l) for (x, y, z, l) in self.fairness_la[rep] if x == 'entered']
-        #     ll = sorted(fairness_exit, key=lambda x: x[2])
-        #     forcheck = sorted(ll)  #this could be done with zip but this would do for now.
-        #     for ind in range(len(ll)):
-        #         # f.write(str(forcheck[ind][0]) +", " + str(forcheck[ind][1].getlogname) +", " + str(forcheck[ind][1]))
-        #         if ll[ind] != forcheck[ind]:
-        #             check = 1
-        #             print("fairness not satisfied for LA Mutex")
-        #             break
-        # if check == 0:
-        #     print( "Fairness condition satisfied for La token. The exact order of requests granted are in fairness.log which proves fairness")
+        #note: for fairness, monotonicity could be tested better but this would do for now.
+        for rep in self.fairness_la.keys():
+            fairness_log.write("Log for La Mutex run" + str(rep)+" : timestamp, clock time, processid \n" )
+            fairness_exit =  [(y, z,l) for (x, y, z, l) in self.fairness_la[rep] if x == 'entered']
+            ll = sorted(fairness_exit, key=lambda x: x[2])
+            forcheck = sorted(ll)  #this could be done with zip but this would do for now.
+            for ind in range(len(ll)):
+                fairness_log.write(str(forcheck[ind][0]) +", " + str(forcheck[ind][1].getlogname) +", " + str(forcheck[ind][2]) + "\n")
+                if ll[ind] != forcheck[ind]:
+                    check = 1
+                    print("fairness not satisfied for LA Mutex")
+                    break
+        if check == 0:
+            print( "Fairness condition satisfied for La Mutex. The exact order of requests granted are in fairness.log which proves fairness")
+
+        check = 0
+        #note: for fairness, monotonicity could be tested better but this would do for now.
+        for rep in self.fairness_ra.keys():
+            fairness_log.write("Log for Ra Mutex run" + str(rep)+" : timestamp, clock time, processid \n" )
+            fairness_exit =  [(y, z,l) for (x, y, z, l) in self.fairness_ra[rep] if x == 'entered']
+            ll = sorted(fairness_exit, key=lambda x: x[2])
+            forcheck = sorted(ll)  #this could be done with zip but this would do for now.
+            for ind in range(len(ll)):
+                fairness_log.write(str(forcheck[ind][0]) +", " + str(forcheck[ind][1].getlogname) +", " + str(forcheck[ind][2]) + "\n")
+                if ll[ind] != forcheck[ind]:
+                    check = 1
+                    print("fairness not satisfied for Ra Mutex")
+                    break
+        if check == 0:
+            print( "Fairness condition satisfied for RaMutex. The exact order of requests granted are in fairness.log which proves fairness")
+
+        check = 0
+        #note: for fairness, monotonicity could be tested better but this would do for now.
+        for rep in self.fairness_rato.keys():
+            fairness_log.write("Log for Ra Token run" + str(rep)+" : timestamp, clock time, processid \n" )
+            fairness_exit =  [(y, z,l) for (x, y, z, l) in self.fairness_rato[rep] if x == 'entered']
+            ll = sorted(fairness_exit, key=lambda x: x[2])
+            forcheck = sorted(ll)  #this could be done with zip but this would do for now.
+            for ind in range(len(ll)):
+                fairness_log.write(str(forcheck[ind][0]) +", " + str(forcheck[ind][1].getlogname) +", " + str(forcheck[ind][2]) + "\n")
+                if ll[ind] != forcheck[ind]:
+                    if check != 1:
+                        print("fairness not satisfied for Ra Token. See fairness.log")
+                    check = 1
+        if check == 0:
+            print( "Fairness condition satisfied for Ra Token. The exact order of requests granted are in fairness.log which proves fairness")
 
 
 
@@ -469,6 +527,7 @@ class ramutex(process):
 
         --cs
         send(('ramutex_CS', 'entering',time.time(), self.id), to=parentid)
+        send(('ramutex_fairness', 'entered',ownc,rep, self.id, time.time()), to=parentid)
         end_time = time.time()
         self.entered +=1
         task()                  # critical section
@@ -518,6 +577,7 @@ class ratoken(process):
         end_time = time.time()
         self.entered += 1
         send(('ratoken_CS', 'entering',time.time(), self.id), to=parentid)
+        send(('ratomutex_fairness', 'entered',clock,rep, self.id, time.time()), to=parentid)
         task()                  # critical section
         send(('ratoken_CS', 'exiting',time.time(), self.id), to=parentid)
         --release
