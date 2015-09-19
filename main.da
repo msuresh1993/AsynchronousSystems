@@ -31,7 +31,7 @@ class driverclass(process):
         self.fairness_rato = {}
     def draw_waittime_vs_reqnum(N,req_num, lamutex,ramutex, ratoken, lamutex_tot,ramutex_tot, ratoken_tot, lamutex_msg,ramutex_msg, ratoken_msg):
         fig1, ax1 = plt.subplots()
-        fig1.suptitle('Waiting Time to enter CS Graph')
+        fig1.suptitle('Waiting Time to enter CS ')
         # ax1 = fig1.add_subplot(111)
         ax1.plot(req_num, lamutex,'r', label="La Mutex")
         ax1.plot(req_num, ramutex,'b', label="Ra Mutex")
@@ -44,7 +44,7 @@ class driverclass(process):
         ax1.axis((min(req_num)-1,max(req_num)+1, lower_limit_y, upper_limit_y))
 
         fig2, ax2 = plt.subplots()
-        fig2.suptitle('Turnaround Time to finish job Graph')
+        fig2.suptitle('Turnaround Time to finish job ')
         # ax1 = fig1.add_subplot(111)
         ax2.plot(req_num, lamutex_tot,'r', label="La Mutex")
         ax2.plot(req_num, ramutex_tot,'b', label="Ra Mutex")
@@ -70,6 +70,46 @@ class driverclass(process):
         ax3.axis((min(req_num)-1,max(req_num)+1, lower_limit_y, upper_limit_y))
         plt.show()
 
+    def draw_waittime_vs_reqnum_pr(N,req_num, lamutex,ramutex, ratoken, lamutex_tot,ramutex_tot, ratoken_tot, lamutex_msg,ramutex_msg, ratoken_msg):
+        fig1, ax1 = plt.subplots()
+        fig1.suptitle('Waiting Time to enter CS ')
+        # ax1 = fig1.add_subplot(111)
+        ax1.plot(req_num, lamutex,'r', label="La Mutex")
+        ax1.plot(req_num, ramutex,'b', label="Ra Mutex")
+        ax1.plot(req_num, ratoken,'y', label="Ra Token")
+        plt.legend(loc=2, borderaxespad=0.)
+        ax1.set_xlabel("number of process(s)")
+        ax1.set_ylabel("average waiting time(x1000)")
+        lower_limit_y = min((min(lamutex), min(ramutex), min(ratoken))) - 1
+        upper_limit_y = max((max(lamutex), max(ramutex), min(ratoken))) + 1
+        ax1.axis((min(req_num)-1,max(req_num)+1, lower_limit_y, upper_limit_y))
+
+        fig2, ax2 = plt.subplots()
+        fig2.suptitle('Turnaround Time to finish job Graph')
+        # ax1 = fig1.add_subplot(111)
+        ax2.plot(req_num, lamutex_tot,'r', label="La Mutex")
+        ax2.plot(req_num, ramutex_tot,'b', label="Ra Mutex")
+        ax2.plot(req_num, ratoken_tot,'y', label="Ra Token")
+        plt.legend(loc=2, borderaxespad=0.)
+        ax2.set_xlabel("number of process(s)")
+        ax2.set_ylabel("average turnaround time(x100)")
+        lower_limit_y = min((min(lamutex_tot), min(ramutex_tot), min(ratoken_tot))) - 1
+        upper_limit_y = max((max(lamutex_tot), max(ramutex_tot), max(ratoken_tot))) + 1
+        ax2.axis((min(req_num)-1,max(req_num)+1, lower_limit_y, upper_limit_y))
+
+        fig3, ax3 = plt.subplots()
+        fig3.suptitle('Average number of messages passed Vs number of Processes')
+        # ax1 = fig1.add_subplot(111)
+        ax3.plot(req_num, lamutex_msg,'r', label="La Mutex")
+        ax3.plot(req_num, ramutex_msg,'b', label="Ra Mutex")
+        ax3.plot(req_num, ratoken_msg,'y', label="Ra Token")
+        plt.legend(loc=2, borderaxespad=0.)
+        ax3.set_xlabel("number of process(s)")
+        ax3.set_ylabel("average messages passed/request")
+        lower_limit_y = min((min(lamutex_msg), min(ramutex_msg), min(ratoken_msg))) - 1
+        upper_limit_y = max((max(lamutex_msg), max(ramutex_msg), max(ratoken_msg))) + 1
+        ax3.axis((min(req_num)-1,max(req_num)+1, lower_limit_y, upper_limit_y))
+        plt.show()
     def receive(msg=('lamutex_waitt', waittime, id)):
         lamutex_waittime.append(waittime)
 
@@ -340,7 +380,7 @@ class driverclass(process):
                 fairness_log.write(str(forcheck[ind][0]) +", " + str(forcheck[ind][1].getlogname) +", " + str(forcheck[ind][2]) + "\n")
                 if ll[ind] != forcheck[ind]:
                     if check != 1:
-                        otpt.write("fairness not satisfied for Ra Token. Note: strict fairness is not guaranteed for Ra Token as a process may enter CS twice if it has token.See fairness.log\n")
+                        otpt.write("fairness not satisfied for Ra Token. Note: strict fairness is not guaranteed for Ra Token as it just checks set for any process with request and not ordered via request logical time.See fairness.log\n")
                     check = 1
         if check == 0:
             otpt.write( "Fairness condition satisfied for Ra Token. The exact order of requests granted are in fairness.log which proves fairness\n")
@@ -453,6 +493,101 @@ class driverclass(process):
         #
         #
         #
+
+        lamutex_waittime.clear()
+        ramutex_waittime.clear()
+        ratoken_waittime.clear()
+
+        lamutex_turnaroundtime.clear()
+        ramutex_turnaroundtime.clear()
+        ratoken_turnaroundtime.clear()
+        pr_ea_round = [int(math.ceil(x)) for x in np.linspace(0, p, s+1).tolist()]
+        lamu_graphline = []
+        ramu_graphline = []
+        rato_graphline = []
+        lamu_tat_graphline = []
+        ramu_tat_graphline = []
+        rato_tat_graphline = []
+        lamu_msg_graphline = []
+        ramu_msg_graphline = []
+        rato_msg_graphline = []
+        req_count = 0
+        for proc in pr_ea_round[1:]:
+            req_sum = 0
+            tat_sum = 0
+            for i in range(m):
+                ps = new(lamutex, num= proc)
+                # setup(time_proc,(set(ps)))
+                # start(timekeeper_set)
+                req_per_process = gen_equispaced_array(r, proc)
+                index = 0
+                for pr in ps:
+                    setup(pr, (ps-{pr}, req_per_process[index], self.id, i, req_count))
+                    index = index + 1
+                start(ps)
+                await(each(pr in ps, has=some(received(('lamutex_rddone',_pr, _i, _req_count)))))
+                req_sum = req_sum + sum(lamutex_waittime)/len(lamutex_waittime)
+                tat_sum = tat_sum + sum(lamutex_turnaroundtime)/ len(lamutex_turnaroundtime)
+                lamutex_waittime.clear()
+                lamutex_turnaroundtime.clear()
+            lamu_msg_graphline.append(int(self.messages_la/(r*m)))
+            self.messages_la = 0
+            lamu_graphline.append(req_sum/m)
+            lamu_tat_graphline.append(tat_sum/m)
+            req_count = req_count + 1
+        req_count = 0
+        for proc in pr_ea_round[1:]:
+            req_sum = 0
+            tat_sum = 0
+            for i in range(m):
+                ps = new(ramutex, num = proc)
+                req_per_process = gen_equispaced_array(r, proc)
+                index = 0
+                for pr in ps:
+                    setup(pr, (ps-{pr}, req_per_process[index], self.id, i, req_count))
+                    index = index + 1
+                start(ps)
+                await(each(pr in ps, has=some(received(('ramutex_rddone', _pr, _i, _req_count)))))
+                req_sum = req_sum + sum(ramutex_waittime)/len(ramutex_waittime)
+                tat_sum = tat_sum + sum(ramutex_turnaroundtime)/ len(ramutex_turnaroundtime)
+                ramutex_waittime.clear()
+                ramutex_turnaroundtime.clear()
+            ramu_msg_graphline.append(int(self.messages_ra/(r*m)))
+            self.messages_ra = 0
+            ramu_graphline.append(req_sum/m)
+            ramu_tat_graphline.append(tat_sum/m)
+            req_count = req_count + 1
+
+        req_count = 0
+        for proc in pr_ea_round[1:]:
+            req_sum = 0
+            tat_sum = 0
+            for i in range(m):
+                ps = new(ratoken, num = proc)
+                req_per_process = gen_equispaced_array(r, proc)
+                index = 0
+                pz = ps.pop()
+                setup([pz], (ps|{pz}, req_per_process[index], True, self.id, i, req_count))
+                index = index + 1
+                for pr in ps:
+                    setup(pr, (ps|{pz}, req_per_process[index], False, self.id, i, req_count))
+                    index = index + 1
+                start(ps|{pz})
+                await(each(pr in ps, has=some(received(('ratoken_rddone', _pr, _i, _req_count)))))
+                req_sum = req_sum + sum(ratoken_waittime)/len(ratoken_waittime)
+                tat_sum = tat_sum + sum(ratoken_turnaroundtime)/ len(ratoken_turnaroundtime)
+                ratoken_waittime.clear()
+                ratoken_turnaroundtime.clear()
+            rato_msg_graphline.append(int(self.messages_rato/(r*m)))
+            self.messages_rato = 0
+            rato_graphline.append(req_sum/m)
+            rato_tat_graphline.append(tat_sum/m)
+            req_count = req_count + 1
+        draw_waittime_vs_reqnum_pr(len(lamu_graphline),pr_ea_round[1:], lamu_graphline,ramu_graphline, rato_graphline, lamu_tat_graphline,ramu_tat_graphline, rato_tat_graphline, lamu_msg_graphline,ramu_msg_graphline, rato_msg_graphline)
+
+
+        ##
+        ##
         output(" The graphs show performance measurements for three algorithms - Lamport Mutex, Ricart-Agarwala and RA Token. ")
         output(" Note: Close these graph windows and open output.txt to see the correctness output.")
 

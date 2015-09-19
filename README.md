@@ -1,6 +1,15 @@
 AsynchronousSystems - Assignment 2
 Name: Muthukumar Suresh
-NOTE: You must close the graph windows after you run to see the other outputs and so that the output.txt is generated. 
+
+RUNNING INSTRUCTIONS : run the run command
+                       After all the processing is done:
+                       3 graphs are generated -- these are the graphs for performance Vs Number of Requests
+                       Close these graphs
+                       the progam starts running again
+                       3 more graphs are generated -- these are the graphs for performance Vs Number of Processes
+                       close these graphs (necessary step)
+                       The program should terminate
+                       Open output.txt and navigate from there for correctness testing
 
 Algorithms Implemented: La Mutex (Lamport Mutex)
                         Ra Mutex ( Ricart- Agarwala Mutex)
