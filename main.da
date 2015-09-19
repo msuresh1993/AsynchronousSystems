@@ -26,6 +26,7 @@ class driverclass(process):
         self.safety_la = []
         self.safety_ra = []
         self.safety_rato = []
+        self.fairness_la = {}
     def draw_waittime_vs_reqnum(N,req_num, lamutex,ramutex, ratoken, lamutex_tot,ramutex_tot, ratoken_tot, lamutex_msg,ramutex_msg, ratoken_msg):
         print(lamutex, ramutex, req_num)
         fig1, ax1 = plt.subplots()
@@ -124,6 +125,11 @@ class driverclass(process):
     def receive(msg=('ratoken_CS', msg, time, pid)):
         self.safety_rato.append((msg, pid, time))
 
+    def receive(msg=('lamutex_fairness', msg, time, rep, pid, tim)):
+        if rep in self.fairness_la.keys():
+            self.fairness_la[rep].append((msg,time,pid, tim))
+        else:
+            self.fairness_la[rep] = [(msg,time,pid, tim)]
     def run():
 
         config(channel='fifo', clock='Lamport')
@@ -265,6 +271,26 @@ class driverclass(process):
         if check == 0:
             print( "Safety condition satisfied for ra token. Total entries and exits made in order : ", count, " Check safety.log for more details")
 
+        check = 0
+        # fairness_log = open("fairness.log", "w")
+        # fairness_log.write("Fasfasffa")
+        # #note: for fairness, monotonicity could be tested better but this would do for now.
+        # for rep in self.fairness_la.keys():
+        #     fairness_log.write("Log for La Mutex run" + str(rep)+" : timestamp, clock time, processid " )
+        #     fairness_exit =  [(y, z,l) for (x, y, z, l) in self.fairness_la[rep] if x == 'entered']
+        #     ll = sorted(fairness_exit, key=lambda x: x[2])
+        #     forcheck = sorted(ll)  #this could be done with zip but this would do for now.
+        #     for ind in range(len(ll)):
+        #         # f.write(str(forcheck[ind][0]) +", " + str(forcheck[ind][1].getlogname) +", " + str(forcheck[ind][1]))
+        #         if ll[ind] != forcheck[ind]:
+        #             check = 1
+        #             print("fairness not satisfied for LA Mutex")
+        #             break
+        # if check == 0:
+        #     print( "Fairness condition satisfied for La token. The exact order of requests granted are in fairness.log which proves fairness")
+
+
+
         self.live_la = {}
         self.live_ra = {}
         self.live_rato = {}
@@ -390,6 +416,7 @@ class lamutex(process):
               and each(p in s, has=received(('ack', c, p))))
         -- critical_section
         send(('lamutex_CS', 'entering',time.time(), self.id), to=parentid)
+        send(('lamutex_fairness', 'entered',c,rep, self.id, time.time()), to=parentid)
         self.entered = self.entered + 1
         end_time = time.time()
         task()
