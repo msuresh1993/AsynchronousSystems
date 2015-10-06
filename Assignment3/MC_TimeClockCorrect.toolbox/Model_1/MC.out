@@ -1,0 +1,230 @@
+@!@!@STARTMSG 2262:0 @!@!@
+TLC2 Version 2.06 of 9 May 2015
+@!@!@ENDMSG 2262 @!@!@
+@!@!@STARTMSG 2187:0 @!@!@
+Running in Model-Checking mode.
+@!@!@ENDMSG 2187 @!@!@
+@!@!@STARTMSG 2220:0 @!@!@
+Starting SANY...
+@!@!@ENDMSG 2220 @!@!@
+Parsing file MC.tla
+Parsing file TimeClockCorrectness.tla
+Parsing file C:\Users\ASUS\Desktop\toolbox\plugins\org.lamport.tlatools_1.0.0.201505120857\tla2sany\StandardModules\TLC.tla
+Parsing file C:\Users\ASUS\Desktop\timeclocks.tla
+Parsing file C:\Users\ASUS\Desktop\toolbox\plugins\org.lamport.tlatools_1.0.0.201505120857\tla2sany\StandardModules\Naturals.tla
+Parsing file C:\Users\ASUS\Desktop\toolbox\plugins\org.lamport.tlatools_1.0.0.201505120857\tla2sany\StandardModules\Sequences.tla
+Semantic processing of module Naturals
+Semantic processing of module Sequences
+Semantic processing of module timeclocks
+Semantic processing of module TimeClockCorrectness
+Semantic processing of module TLC
+Semantic processing of module MC
+@!@!@STARTMSG 2219:0 @!@!@
+SANY finished.
+@!@!@ENDMSG 2219 @!@!@
+@!@!@STARTMSG 2185:0 @!@!@
+Starting... (2015-10-05 02:51:10)
+@!@!@ENDMSG 2185 @!@!@
+@!@!@STARTMSG 2212:0 @!@!@
+Implied-temporal checking--satisfiability problem has 2 branches.
+@!@!@ENDMSG 2212 @!@!@
+@!@!@STARTMSG 2189:0 @!@!@
+Computing initial states...
+@!@!@ENDMSG 2189 @!@!@
+@!@!@STARTMSG 2190:0 @!@!@
+Finished computing initial states: 36 distinct state25 generated.
+@!@!@ENDMSG 2190 @!@!@
+@!@!@STARTMSG 2192:0 @!@!@
+Checking temporal properties for the complete state space with 5733 distinct states at (2015-10-05 02:51:11)
+@!@!@ENDMSG 2192 @!@!@
+@!@!@STARTMSG 2116:1 @!@!@
+Temporal properties were violated.
+
+@!@!@ENDMSG 2116 @!@!@
+@!@!@STARTMSG 2264:1 @!@!@
+The following behavior constitutes a counter-example:
+
+@!@!@ENDMSG 2264 @!@!@
+@!@!@STARTMSG 2217:4 @!@!@
+1: <Initial predicate>
+/\ state = <<"idle", "idle">>
+/\ lastTSent = <<(2 :> 0), <<0>>>>
+/\ reqSet = <<{}, {}>>
+/\ msgQ = <<(2 :> <<>>), <<<<>>>>>>
+/\ clock = <<0, 0>>
+/\ lastTRcvd = <<(2 :> 0), <<0>>>>
+
+@!@!@ENDMSG 2217 @!@!@
+@!@!@STARTMSG 2217:4 @!@!@
+2: <Action line 22, col 9 to line 31, col 30 of module timeclocks>
+/\ state = <<"waiting", "idle">>
+/\ lastTSent = <<(2 :> 4), <<0>>>>
+/\ reqSet = <<{[TS |-> 4, proc |-> 1, cmd |-> "acquire"]}, {}>>
+/\ msgQ = <<(2 :> <<[TS |-> 4, proc |-> 1, cmd |-> "acquire"]>>), <<<<>>>>>>
+/\ clock = <<4, 0>>
+/\ lastTRcvd = <<(2 :> 0), <<0>>>>
+
+@!@!@ENDMSG 2217 @!@!@
+@!@!@STARTMSG 2217:4 @!@!@
+3: <Action line 22, col 9 to line 31, col 30 of module timeclocks>
+/\ state = <<"waiting", "waiting">>
+/\ lastTSent = <<(2 :> 4), <<3>>>>
+/\ reqSet = << {[TS |-> 4, proc |-> 1, cmd |-> "acquire"]},
+   {[TS |-> 3, proc |-> 2, cmd |-> "acquire"]} >>
+/\ msgQ = << (2 :> <<[TS |-> 4, proc |-> 1, cmd |-> "acquire"]>>),
+   <<<<[TS |-> 3, proc |-> 2, cmd |-> "acquire"]>>>> >>
+/\ clock = <<4, 3>>
+/\ lastTRcvd = <<(2 :> 0), <<0>>>>
+
+@!@!@ENDMSG 2217 @!@!@
+@!@!@STARTMSG 2217:4 @!@!@
+4: <Action line 59, col 8 to line 72, col 26 of module timeclocks>
+/\ state = <<"waiting", "waiting">>
+/\ lastTSent = <<(2 :> 4), <<3>>>>
+/\ reqSet = << { [TS |-> 3, proc |-> 2, cmd |-> "acquire"],
+     [TS |-> 4, proc |-> 1, cmd |-> "acquire"] },
+   {[TS |-> 3, proc |-> 2, cmd |-> "acquire"]} >>
+/\ msgQ = <<(2 :> <<[TS |-> 4, proc |-> 1, cmd |-> "acquire"]>>), <<<<>>>>>>
+/\ clock = <<4, 3>>
+/\ lastTRcvd = <<(2 :> 3), <<0>>>>
+
+@!@!@ENDMSG 2217 @!@!@
+@!@!@STARTMSG 2217:4 @!@!@
+5: <Action line 59, col 8 to line 72, col 26 of module timeclocks>
+/\ state = <<"waiting", "waiting">>
+/\ lastTSent = <<(2 :> 4), <<3>>>>
+/\ reqSet = << { [TS |-> 3, proc |-> 2, cmd |-> "acquire"],
+     [TS |-> 4, proc |-> 1, cmd |-> "acquire"] },
+   { [TS |-> 3, proc |-> 2, cmd |-> "acquire"],
+     [TS |-> 4, proc |-> 1, cmd |-> "acquire"] } >>
+/\ msgQ = <<(2 :> <<>>), <<<<>>>>>>
+/\ clock = <<4, 4>>
+/\ lastTRcvd = <<(2 :> 3), <<4>>>>
+
+@!@!@ENDMSG 2217 @!@!@
+@!@!@STARTMSG 2217:4 @!@!@
+6: <Action line 36, col 9 to line 41, col 59 of module timeclocks>
+/\ state = <<"waiting", "owner">>
+/\ lastTSent = <<(2 :> 4), <<3>>>>
+/\ reqSet = << { [TS |-> 3, proc |-> 2, cmd |-> "acquire"],
+     [TS |-> 4, proc |-> 1, cmd |-> "acquire"] },
+   {[TS |-> 4, proc |-> 1, cmd |-> "acquire"]} >>
+/\ msgQ = <<(2 :> <<>>), <<<<>>>>>>
+/\ clock = <<4, 4>>
+/\ lastTRcvd = <<(2 :> 3), <<4>>>>
+
+@!@!@ENDMSG 2217 @!@!@
+@!@!@STARTMSG 2218:4 @!@!@
+7: Stuttering
+@!@!@ENDMSG 2218 @!@!@
+@!@!@STARTMSG 2201:0 @!@!@
+The coverage statistics at 2015-10-05 02:51:11
+@!@!@ENDMSG 2201 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 23, col 12 to line 23, col 51 of module timeclocks: 7263
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 25, col 16 to line 25, col 47 of module timeclocks: 7263
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 28, col 23 to line 28, col 90 of module timeclocks: 7263
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 29, col 23 to line 29, col 68 of module timeclocks: 7263
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 30, col 16 to line 30, col 77 of module timeclocks: 7263
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 31, col 22 to line 31, col 30 of module timeclocks: 7263
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 39, col 12 to line 39, col 47 of module timeclocks: 904
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 40, col 12 to line 40, col 52 of module timeclocks: 904
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 41, col 25 to line 41, col 28 of module timeclocks: 904
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 41, col 31 to line 41, col 35 of module timeclocks: 904
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 41, col 38 to line 41, col 46 of module timeclocks: 904
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 41, col 49 to line 41, col 57 of module timeclocks: 904
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 45, col 12 to line 45, col 46 of module timeclocks: 904
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 49, col 15 to line 49, col 84 of module timeclocks: 904
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 51, col 12 to line 51, col 79 of module timeclocks: 904
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 53, col 24 to line 53, col 28 of module timeclocks: 904
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 53, col 31 to line 53, col 39 of module timeclocks: 904
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 53, col 42 to line 53, col 47 of module timeclocks: 904
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 60, col 11 to line 60, col 74 of module timeclocks: 6807
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 63, col 21 to line 63, col 70 of module timeclocks: 867
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 64, col 21 to line 64, col 71 of module timeclocks: 867
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 65, col 21 to line 65, col 36 of module timeclocks: 5940
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 66, col 31 to line 66, col 39 of module timeclocks: 5940
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 67, col 11 to line 67, col 58 of module timeclocks: 6807
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 68, col 11 to line 71, col 45 of module timeclocks: 6807
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 72, col 22 to line 72, col 26 of module timeclocks: 6807
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 75, col 20 to line 75, col 51 of module timeclocks: 19949
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 76, col 30 to line 76, col 34 of module timeclocks: 19949
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 76, col 37 to line 76, col 40 of module timeclocks: 19949
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 76, col 43 to line 76, col 48 of module timeclocks: 19949
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 76, col 51 to line 76, col 59 of module timeclocks: 19949
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2221:0 @!@!@
+  line 76, col 62 to line 76, col 70 of module timeclocks: 19949
+@!@!@ENDMSG 2221 @!@!@
+@!@!@STARTMSG 2202:0 @!@!@
+End of statistics.
+@!@!@ENDMSG 2202 @!@!@
+@!@!@STARTMSG 2200:0 @!@!@
+Progress(20) at 2015-10-05 02:51:11: 35863 states generated (1,586,858 s/min), 5733 distinct states found (253,672 ds/min), 0 states left on queue.
+@!@!@ENDMSG 2200 @!@!@
+@!@!@STARTMSG 2199:0 @!@!@
+35863 states generated, 5733 distinct states found, 0 states left on queue.
+@!@!@ENDMSG 2199 @!@!@
+@!@!@STARTMSG 2186:0 @!@!@
+Finished. (2015-10-05 02:51:11)
+@!@!@ENDMSG 2186 @!@!@
