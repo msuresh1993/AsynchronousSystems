@@ -1,0 +1,64 @@
+import sys
+from random import randint
+import time
+
+class Proposer_orig(process):
+    def setup(acceptors):
+        self.n = None              # proposal number
+        self.majority = acceptors  # majority of acceptors; all in other papers
+        self.count = 0
+
+    def to_consent():
+        n = (0, self.id) if n == None else (n[0]+1, self.id)  # pick a prop num
+        send(('prepare', n), to= majority)
+        if await((len(setof(a, received(('respond', _n, _), from_= a))) > len(acceptors)/2)):
+            v = anyof(setof(v, received(('respond', _n, (n2, v))),
+                            n2==max(setof(n2, received(('respond', _n, (n2, _))))))
+                      or {randint(1,100)})  # pick any value, here in 1..100
+            responded = setof(a, received(('respond', _n, _), from_= a))
+            send(('accept', n, v), to= responded)
+            output('### chose', n, v)
+            self.count += 1
+
+    def receive(msg= ('done',)):          ##
+        output('terminating'); 
+        # output('checkoutput', self.count);
+        exit()     ##
+
+    def run():
+        while True: to_consent()
+
+class Acceptor_orig(process):
+    def setup(learners): pass
+
+    def receive(msg= ('prepare', n), from_= p):
+        #output('acceptedmsg', n, p)
+        if each(sent(('respond', n2, _)), has= n > n2):
+            #output('enter', n, n2, p)
+            max_prop = anyof(setof((n, v), sent(('accepted', n, v)),
+                                   n==max(setof(n, sent(('accepted', n, _))))))
+            send(('respond', n, max_prop), to= p)
+
+    def receive(msg= ('accept', n, v)):
+        if not some(sent(('respond', n2, _)), has= n2 > n):
+            send(('accepted', n, v), to= learners)
+
+    def receive(msg= ('done',)):          ##
+        output('terminating'); exit()     ##
+
+    def run():
+        await(False)
+
+class Learner_orig(process):
+    def setup(acceptors): pass
+
+    def learn():
+        if await(some(received(('accepted', n, v)),
+                      has= len(setof(a, received(('accepted', _n, _v), from_=a)))
+                           > len(acceptors)/2)):
+            output('learned', n, v)
+
+    def run():
+        learn()
+        output('terminating')
+

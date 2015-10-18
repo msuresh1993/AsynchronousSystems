@@ -1,39 +1,48 @@
 import sys
 from random import randint
+import time
+# orig = import_da('orig')
 
+
+# def send1(send):
+#     pass
 def anyof(s):
     """return any element of set s if s is not empty or 'None' otherwise"""
     return next(iter(s)) if s else None
-
-class Proposer(process):
-    def setup(acceptors):
+####
+class Proposer_orig(process):
+    def setup(acceptors,r:int, d:int, w:int):
         self.n = None              # proposal number
         self.majority = acceptors  # majority of acceptors; all in other papers
+        self.count = 0
 
     def to_consent():
         n = (0, self.id) if n == None else (n[0]+1, self.id)  # pick a prop num
         send(('prepare', n), to= majority)
-
-        if await(len(setof(a, received(('respond', _n, _), from_= a)))
-                 > len(acceptors)/2):
+        if await((len(setof(a, received(('respond', _n, _), from_= a))) > len(acceptors)/2)):
             v = anyof(setof(v, received(('respond', _n, (n2, v))),
                             n2==max(setof(n2, received(('respond', _n, (n2, _))))))
                       or {randint(1,100)})  # pick any value, here in 1..100
             responded = setof(a, received(('respond', _n, _), from_= a))
             send(('accept', n, v), to= responded)
             output('### chose', n, v)
+            self.count += 1
 
     def receive(msg= ('done',)):          ##
-        output('terminating'); exit()     ##
+        output('terminating'); 
+        # output('checkoutput', self.count);
+        exit()     ##
 
     def run():
         while True: to_consent()
 
-class Acceptor(process):
+class Acceptor_orig(process):
     def setup(learners): pass
 
     def receive(msg= ('prepare', n), from_= p):
+        #output('acceptedmsg', n, p)
         if each(sent(('respond', n2, _)), has= n > n2):
+            #output('enter', n, n2, p)
             max_prop = anyof(setof((n, v), sent(('accepted', n, v)),
                                    n==max(setof(n, sent(('accepted', n, _))))))
             send(('respond', n, max_prop), to= p)
@@ -48,7 +57,76 @@ class Acceptor(process):
     def run():
         await(False)
 
-class Learner(process):
+
+class Learner_orig(process):
+    def setup(acceptors,): pass
+
+    def learn():
+        if await(some(received(('accepted', n, v)),
+                      has= len(setof(a, received(('accepted', _n, _v), from_=a)))
+                           > len(acceptors)/2)):
+            output('learned', n, v)
+
+    def run():
+        learn()
+        output('terminating')
+
+
+####
+class Proposer_to(process):
+    def setup(acceptors,  r:int, d:int, w:int):
+        self.n = None              # proposal number
+        self.majority = acceptors  # majority of acceptors; all in other papers
+        self.count = 0
+
+    def to_consent():
+        n = (0, self.id) if n == None else (n[0]+1, self.id)  # pick a prop num
+        send(('prepare', n), to= majority)
+
+        t = time.clock()
+
+        if await((len(setof(a, received(('respond', _n, _), from_= a))) > len(acceptors)/2) or time.clock() >= t + 1):
+            if (len(setof(a, received(('respond', _n, _), from_= a))) <= len(acceptors)/2):
+                self.count = 1
+            else:
+                v = anyof(setof(v, received(('respond', _n, (n2, v))),
+                                n2==max(setof(n2, received(('respond', _n, (n2, _))))))
+                          or {randint(1,100)})  # pick any value, here in 1..100
+                responded = setof(a, received(('respond', _n, _), from_= a))
+                send(('accept', n, v), to= responded)
+                output('### chose', n, v)
+                self.count += 1
+
+    def receive(msg= ('done',)):          ##
+        output('terminating'); 
+        output('checkoutput', self.count);
+        exit()     ##
+
+    def run():
+        while True: to_consent()
+
+class Acceptor_to(process):
+    def setup(learners): pass
+
+    def receive(msg= ('prepare', n), from_= p):
+        #output('acceptedmsg', n, p)
+        if each(sent(('respond', n2, _)), has= n > n2):
+            #output('enter', n, n2, p)
+            max_prop = anyof(setof((n, v), sent(('accepted', n, v)),
+                                   n==max(setof(n, sent(('accepted', n, _))))))
+            send(('respond', n, max_prop), to= p)
+
+    def receive(msg= ('accept', n, v)):
+        if not some(sent(('respond', n2, _)), has= n2 > n):
+            send(('accepted', n, v), to= learners)
+
+    def receive(msg= ('done',)):          ##
+        output('terminating'); exit()     ##
+
+    def run():
+        await(False)
+
+class Learner_to(process):
     def setup(acceptors): pass
 
     def learn():
@@ -61,20 +139,218 @@ class Learner(process):
         learn()
         output('terminating')
 
+
+####
+class Proposer_pe(process):
+    def setup(acceptors,  r:int, d:int, w:int):
+        self.n = None              # proposal number
+        self.majority = acceptors  # majority of acceptors; all in other papers
+        self.count = 0
+
+    def to_consent():
+        n = (0, self.id) if n == None else (n[0]+1, self.id)  # pick a prop num
+        send(('prepare', n), to= majority)
+
+        t = time.clock()
+
+        if await((len(setof(a, received(('respond', _n, _), from_= a))) > len(acceptors)/2) or received(('reject', n), from_=a)):
+            if (len(setof(a, received(('respond', _n, _), from_= a))) <= len(acceptors)/2):
+                output('preempting round :', n)
+                self.count = 1 #
+            else:
+                v = anyof(setof(v, received(('respond', _n, (n2, v))),
+                                n2==max(setof(n2, received(('respond', _n, (n2, _))))))
+                          or {randint(1,100)})  # pick any value, here in 1..100
+                responded = setof(a, received(('respond', _n, _), from_= a))
+                send(('accept', n, v), to= responded)
+                output('### chose', n, v)
+                self.count += 1
+
+    def receive(msg= ('done',)):          ##
+        output('terminating'); 
+        output('checkoutput', self.count);
+        exit()     ##
+
+    def run():
+        while True: to_consent()
+
+class Acceptor_pe(process):
+    def setup(learners): 
+        last_preempt = None
+    def receive(msg= ('prepare', n), from_= p):
+        #output('acceptedmsg', n, p)
+        if each(sent(('respond', n2, _)), has= n > n2):
+            #output('enter', n, n2, p)
+            max_prop = anyof(setof((n, v), sent(('accepted', n, v)),
+                                   n==max(setof(n, sent(('accepted', n, _))))))
+            send(('respond', n, max_prop), to= p)
+        else:
+            send(('reject', n), to=p)            
+    def receive(msg= ('accept', n, v)):
+        if not some(sent(('respond', n2, _)), has= n2 > n):
+            send(('accepted', n, v), to= learners)
+
+    def receive(msg= ('done',)):          ##
+        output('terminating'); exit()     ##
+
+    def run():
+        await(False)
+
+class Learner_pe(process):
+    def setup(acceptors): pass
+
+    def learn():
+        if await(some(received(('accepted', n, v)),
+                      has= len(setof(a, received(('accepted', _n, _v), from_=a)))
+                           > len(acceptors)/2)):
+            output('learned', n, v)
+
+    def run():
+        learn()
+        output('terminating')
+
+####
+
+class Proposer_peto(process):
+    def setup(acceptors,  r:int, d:int, w:int):
+        self.n = None              # proposal number
+        self.majority = acceptors  # majority of acceptors; all in other papers
+        self.count = 0
+
+    def to_consent():
+        n = (0, self.id) if n == None else (n[0]+1, self.id)  # pick a prop num
+        send(('prepare', n), to= majority)
+
+        t = time.clock()
+
+        if await((len(setof(a, received(('respond', _n, _), from_= a))) > len(acceptors)/2) or time.clock() >= t + 1):
+            if (len(setof(a, received(('respond', _n, _), from_= a))) <= len(acceptors)/2):
+                self.count = 1
+            else:
+                v = anyof(setof(v, received(('respond', _n, (n2, v))),
+                                n2==max(setof(n2, received(('respond', _n, (n2, _))))))
+                          or {randint(1,100)})  # pick any value, here in 1..100
+                responded = setof(a, received(('respond', _n, _), from_= a))
+                send(('accept', n, v), to= responded)
+                output('### chose', n, v)
+                self.count += 1
+
+    def receive(msg= ('done',)):          ##
+        output('terminating'); 
+        output('checkoutput', self.count);
+        exit()     ##
+
+    def run():
+        while True: to_consent()
+
+class Acceptor_peto(process):
+    def setup(learners): pass
+
+    def receive(msg= ('prepare', n), from_= p):
+        #output('acceptedmsg', n, p)
+        if each(sent(('respond', n2, _)), has= n > n2):
+            #output('enter', n, n2, p)
+            max_prop = anyof(setof((n, v), sent(('accepted', n, v)),
+                                   n==max(setof(n, sent(('accepted', n, _))))))
+            send(('respond', n, max_prop), to= p)
+
+    def receive(msg= ('accept', n, v)):
+        if not some(sent(('respond', n2, _)), has= n2 > n):
+            send(('accepted', n, v), to= learners)
+
+    def receive(msg= ('done',)):          ##
+        output('terminating'); exit()     ##
+
+    def run():
+        await(False)
+
+class Learner_peto(process):
+    def setup(acceptors): pass
+
+    def learn():
+        if await(some(received(('accepted', n, v)),
+                      has= len(setof(a, received(('accepted', _n, _v), from_=a)))
+                           > len(acceptors)/2)):
+            output('learned', n, v)
+
+    def run():
+        learn()
+        output('terminating')
+
+####
+class driverclass(process):
+    #p - process a - aceptors l - listeners n - rounds, r-drop, d - delay, w -w wait tp - timeout tl - listener timeout
+    def setup(p:int, a:int, l:int, n:int, r:int,d:int ,w:int, tp:int ,tl:int):
+        pass
+
+    def run():
+        #original
+        for i in range(n):
+            acceptors = new(Acceptor_orig, num= a)
+            proposers = new(Proposer_orig, (acceptors, r, d, w), num= p)
+            learners = new(Learner_orig, (acceptors,),num= l)
+            for p in acceptors: setup(p, (learners))
+            start(acceptors | proposers | learners)
+
+            for p in learners: p.join()           ##
+            print('done')                         ##
+            da.send(('done',), to= (acceptors | proposers))  ## da.send not in da-lang
+        # #timeout
+        # for i in range(n):
+        #     acceptors = new(Acceptor_to, num= a)
+        #     proposers = new(Proposer_to, (acceptors, ), num= p)
+        #     learners = new(Learner_to, (acceptors,  r, d, w), num= l)
+        #     for p in acceptors: setup(p, (learners))
+        #     start(acceptors | proposers | learners)
+
+        #     for p in learners: p.join()           ##
+        #     print('done')                         ##
+        #     da.send(('done',), to= (acceptors | proposers))  ## da.send not in da-lang
+
+        # #preemption
+        # for i in range(n):
+        #     acceptors = new(Acceptor_pe, num= a)
+        #     proposers = new(Proposer_pe, (acceptors,), num= p)
+        #     learners = new(Learner_pe, (acceptors,  r, d, w), num= l)
+        #     for p in acceptors: setup(p, (learners))
+        #     start(acceptors | proposers | learners)
+
+        #     for p in learners: p.join()           ##
+        #     print('done')                         ##
+        #     da.send(('done',), to= (acceptors | proposers))  ## da.send not in da-lang
+
+        # #preemption-timeout
+        # for i in range(n):
+        #     acceptors = new(Acceptor_peto, num= a)
+        #     proposers = new(Proposer_peto, (acceptors,), num= p)
+        #     learners = new(Learner_peto, (acceptors,  r, d, w), num= l)
+        #     for p in acceptors: setup(p, (learners))
+        #     start(acceptors | proposers | learners)
+
+        #     for p in learners: p.join()           ##
+        #     print('done')                         ##
+        #     da.send(('done',), to= (acceptors | proposers))  ## da.send not in da-lang
+
 def main():
-    nacceptors = int(sys.argv[1]) if len(sys.argv) > 1 else 3
-    nproposers = int(sys.argv[2]) if len(sys.argv) > 2 else 3
-    nlearners = int(sys.argv[3]) if len(sys.argv) > 3 else 3
-
-    acceptors = new(Acceptor, num= nacceptors)
-    proposers = new(Proposer, (acceptors,), num= nproposers)
-    learners = new(Learner, (acceptors,), num= nlearners)
-    for p in acceptors: setup(p, (learners,))
-    start(acceptors | proposers | learners)
-
-    for p in learners: p.join()           ##
-    print('done')                         ##
-    da.send(('done',), to= (acceptors | proposers))  ## da.send not in da-lang
+    # "p", "a", "r" are the number of proposers, acceptors, and learners, respectively,
+    # "n" is the number of repetitions for each run,
+    # "r" is the message loss rate, between 0 for 0% loss and 1 for 100% loss,
+    # "d" is the message delay, up to the number of seconds specified,
+    # "w" is the wait time, in seconds, before trying a new round,
+    # "tp" and "tl" are the timeout, in seconds, by proposers and learners, respectively, when timeout is used.
+    p = int(sys.argv[1]) if len(sys.argv) > 1 else 10 #"p", "a", "r" are the number of proposers, acceptors, and learners, respectively,
+    a = int(sys.argv[2]) if len(sys.argv) > 2 else 1 #
+    l = int(sys.argv[3]) if len(sys.argv) > 3 else 1 #
+    n = int(sys.argv[4]) if len(sys.argv) > 4 else 1 #
+    r = int(sys.argv[5]) if len(sys.argv) > 5 else 1 #
+    d = int(sys.argv[6]) if len(sys.argv) > 6 else 1 # "d" is the message delay, up to the number of seconds specified,
+    w = int(sys.argv[7]) if len(sys.argv) > 7 else 1 # "w" is the wait time, in seconds, before trying a new round,
+    tp = int(sys.argv[8]) if len(sys.argv) > 8 else 1 # "tp" and "tl" are the timeout, in seconds, by proposers and learners, respectively, when timeout is used.
+    tl = int(sys.argv[9]) if len(sys.argv) > 9 else 1 #
+    config(channel='reliable')
+    driver = new(driverclass, num=1)
+    setup(driver, (p, a, l, n, r, d, w, tp, tl))
+    start(driver)
 
 # This is an executable specification of the algorithm described in
 # Lamport, L. (2001).  Paxos Made Simple.  ACM SIGACT News 
