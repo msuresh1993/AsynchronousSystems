@@ -85,7 +85,8 @@ class Proposer_to(process):
 
         t = time.clock()
 
-        if await((len(setof(a, received(('respond', _n, _), from_= a))) > len(acceptors)/2) or time.clock() >= t + 1):
+        if await((len(setof(a, received(('respond', _n, _), from_= a))) > len(acceptors)/2) or (time.clock() >= t + 1)):
+            
             if (len(setof(a, received(('respond', _n, _), from_= a))) <= len(acceptors)/2):
                 self.count = 1
             else:
@@ -224,6 +225,7 @@ class Proposer_peto(process):
         t = time.clock()
 
         if await((len(setof(a, received(('respond', _n, _), from_= a))) > len(acceptors)/2) or time.clock() >= t + 1):
+            
             if (len(setof(a, received(('respond', _n, _), from_= a))) <= len(acceptors)/2):
                 self.count = 1
             else:
@@ -284,28 +286,35 @@ class driverclass(process):
         pass
 
     def run():
+        
+
         #original
+        output(n)
         for i in range(n):
             acceptors = new(Acceptor_orig, num= a)
-            proposers = new(Proposer_orig, (acceptors, r, d, w), num= p)
-            learners = new(Learner_orig, (acceptors,),num= l)
-            for p in acceptors: setup(p, (learners))
+            proposers = new(Proposer_orig, num= p)
+            learners = new(Learner_orig,num= l)
+            for p in acceptors: setup(p, (learners,))
+            for p in proposers: setup(p, (acceptors, r, d, w))
+            for p in learners: setup(p, (acceptors,))
             start(acceptors | proposers | learners)
 
             for p in learners: p.join()           ##
-            print('done')                         ##
             da.send(('done',), to= (acceptors | proposers))  ## da.send not in da-lang
-        # #timeout
-        # for i in range(n):
-        #     acceptors = new(Acceptor_to, num= a)
-        #     proposers = new(Proposer_to, (acceptors, ), num= p)
-        #     learners = new(Learner_to, (acceptors,  r, d, w), num= l)
-        #     for p in acceptors: setup(p, (learners))
-        #     start(acceptors | proposers | learners)
+        #timeout
+        for i in range(n):
+            acceptors = new(Acceptor_orig, num= a)
+            proposers = new(Proposer_orig, num= p)
+            learners = new(Learner_orig,num= l)
+            for p in acceptors: setup(p, (learners,))
+            for p in proposers: setup(p, (acceptors, r, d, w))
+            for p in learners: setup(p, (acceptors,))
+            start(acceptors | proposers | learners)
 
-        #     for p in learners: p.join()           ##
-        #     print('done')                         ##
-        #     da.send(('done',), to= (acceptors | proposers))  ## da.send not in da-lang
+            for p in learners: p.join()           ##
+            da.send(('done',), to= (acceptors | proposers))  ## da.send not in da-lang
+
+        
 
         # #preemption
         # for i in range(n):

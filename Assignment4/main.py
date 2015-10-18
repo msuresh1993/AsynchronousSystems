@@ -213,10 +213,10 @@ class Learner_orig(da.DistProcess):
         self.output('terminating')
 
     def learn(self):
-        a = v = n = None
+        v = n = a = None
 
         def ExistentialOpExpr_2():
-            nonlocal a, v, n
+            nonlocal v, n, a
             for (_, _, (_ConstantPattern145_, n, v)) in self._Learner_origReceivedEvent_0:
                 if (_ConstantPattern145_ == 'accepted'):
                     if (len({a for (_, (_, _, a), (_ConstantPattern160_, _BoundPattern161_, _BoundPattern162_)) in self._Learner_origReceivedEvent_1 if (_ConstantPattern160_ == 'accepted') if (_BoundPattern161_ == n) if (_BoundPattern162_ == v)}) > (len(self.acceptors) / 2)):
@@ -515,10 +515,10 @@ class Learner_pe(da.DistProcess):
         self.output('terminating')
 
     def learn(self):
-        a = v = n = None
+        v = n = a = None
 
         def ExistentialOpExpr_8():
-            nonlocal a, v, n
+            nonlocal v, n, a
             for (_, _, (_ConstantPattern514_, n, v)) in self._Learner_peReceivedEvent_0:
                 if (_ConstantPattern514_ == 'accepted'):
                     if (len({a for (_, (_, _, a), (_ConstantPattern529_, _BoundPattern530_, _BoundPattern531_)) in self._Learner_peReceivedEvent_1 if (_ConstantPattern529_ == 'accepted') if (_BoundPattern530_ == n) if (_BoundPattern531_ == v)}) > (len(self.acceptors) / 2)):
@@ -702,16 +702,34 @@ class driverclass(da.DistProcess):
         pass
 
     def _da_run_internal(self):
+        self.output(self.n)
         for i in range(self.n):
             acceptors = da.new(Acceptor_orig, num=self.a)
-            proposers = da.new(Proposer_orig, (acceptors, self.r, self.d, self.w), num=self.p)
-            learners = da.new(Learner_orig, acceptors, num=self.l)
+            proposers = da.new(Proposer_orig, num=self.p)
+            learners = da.new(Learner_orig, num=self.l)
             for self.p in acceptors:
-                da.setup(self.p, learners)
+                da.setup(self.p, (learners,))
+            for self.p in proposers:
+                da.setup(self.p, (acceptors, self.r, self.d, self.w))
+            for self.p in learners:
+                da.setup(self.p, (acceptors,))
             da.start(((acceptors | proposers) | learners))
             for self.p in learners:
                 self.p.join()
-            print('done')
+            da.send(('done',), to=(acceptors | proposers))
+        for i in range(self.n):
+            acceptors = da.new(Acceptor_orig, num=self.a)
+            proposers = da.new(Proposer_orig, num=self.p)
+            learners = da.new(Learner_orig, num=self.l)
+            for self.p in acceptors:
+                da.setup(self.p, (learners,))
+            for self.p in proposers:
+                da.setup(self.p, (acceptors, self.r, self.d, self.w))
+            for self.p in learners:
+                da.setup(self.p, (acceptors,))
+            da.start(((acceptors | proposers) | learners))
+            for self.p in learners:
+                self.p.join()
             da.send(('done',), to=(acceptors | proposers))
 
 def main():
