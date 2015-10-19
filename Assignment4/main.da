@@ -1,6 +1,8 @@
 import sys
 from random import randint
 import time
+import copy
+import numpy as np
 # orig = import_da('orig')
 
 
@@ -10,34 +12,50 @@ def anyof(s):
     """return any element of set s if s is not empty or 'None' otherwise"""
     return next(iter(s)) if s else None
 ####
+
+def loss_array(arr, ratio):
+    i = 0
+    l = len(arr)
+    arr1 = copy.deepcopy(arr)
+    while(i < ratio*l):
+        arr1.pop() #removes a random element
+        i = i + 1
+    return arr1
 class Proposer_orig(process):
-    def setup(acceptors,r:int, d:int, w:int):
+    def setup(acceptors,r:int, d:int, w:int, dr):
         self.n = None              # proposal number
         self.majority = acceptors  # majority of acceptors; all in other papers
-        self.count = 0
-
+        self.values_proposed = []
+        self.total_rounds = 0
     def to_consent():
         n = (0, self.id) if n == None else (n[0]+1, self.id)  # pick a prop num
-        send(('prepare', n), to= majority)
+
+        time.sleep(d)
+        send(('prepare', n), to= loss_array(majority, r))
         if await((len(setof(a, received(('respond', _n, _), from_= a))) > len(acceptors)/2)):
             v = anyof(setof(v, received(('respond', _n, (n2, v))),
                             n2==max(setof(n2, received(('respond', _n, (n2, _))))))
                       or {randint(1,100)})  # pick any value, here in 1..100
+            self.values_proposed.append(v)
             responded = setof(a, received(('respond', _n, _), from_= a))
+            time.sleep(d)
             send(('accept', n, v), to= responded)
             output('### chose', n, v)
-            self.count += 1
+        self.total_rounds += 1
+        time.sleep(w)
 
-    def receive(msg= ('done',)):          ##
+    def receive(msg= ('done',)):
+        send(('correctness', self.values_proposed), to=dr)          ##
+        send(('timing', time.process_time()), to=dr)
         output('terminating'); 
-        # output('checkoutput', self.count);
+        
         exit()     ##
 
     def run():
         while True: to_consent()
 
 class Acceptor_orig(process):
-    def setup(learners): pass
+    def setup(learners, dr, r:int): pass
 
     def receive(msg= ('prepare', n), from_= p):
         #output('acceptedmsg', n, p)
@@ -50,64 +68,73 @@ class Acceptor_orig(process):
     def receive(msg= ('accept', n, v)):
         if not some(sent(('respond', n2, _)), has= n2 > n):
             send(('accepted', n, v), to= learners)
-
+            send(('acceptor_choose', v), to=dr)
     def receive(msg= ('done',)):          ##
-        output('terminating'); exit()     ##
+        output('terminating'); 
+        send(('timing', time.process_time()), to=dr)
+        exit()     ##
 
     def run():
         await(False)
 
 
 class Learner_orig(process):
-    def setup(acceptors,): pass
+    def setup(acceptors, dr): pass
 
     def learn():
         if await(some(received(('accepted', n, v)),
                       has= len(setof(a, received(('accepted', _n, _v), from_=a)))
                            > len(acceptors)/2)):
             output('learned', n, v)
+            send(('learners', v), to= dr)
 
     def run():
         learn()
+        send(('timing', time.process_time()), to=dr)
         output('terminating')
-
+        exit()
 
 ####
 class Proposer_to(process):
-    def setup(acceptors,  r:int, d:int, w:int):
+    def setup(acceptors,  r:int, d:int, w:int, tp:int, dr):
         self.n = None              # proposal number
         self.majority = acceptors  # majority of acceptors; all in other papers
-        self.count = 0
-
+        self.values_proposed = []
+        self.total_rounds = 0
     def to_consent():
         n = (0, self.id) if n == None else (n[0]+1, self.id)  # pick a prop num
-        send(('prepare', n), to= majority)
+        time.sleep(d)
+        send(('prepare', n), to= loss_array(majority, r))
 
         t = time.clock()
 
-        if await((len(setof(a, received(('respond', _n, _), from_= a))) > len(acceptors)/2) or (time.clock() >= t + 1)):
-            
-            if (len(setof(a, received(('respond', _n, _), from_= a))) <= len(acceptors)/2):
-                self.count = 1
-            else:
+        if await((len(setof(a, received(('respond', _n, _), from_= a))) > len(acceptors)/2)):
                 v = anyof(setof(v, received(('respond', _n, (n2, v))),
                                 n2==max(setof(n2, received(('respond', _n, (n2, _))))))
                           or {randint(1,100)})  # pick any value, here in 1..100
                 responded = setof(a, received(('respond', _n, _), from_= a))
+                time.sleep(d)
+                self.values_proposed.append(v)
                 send(('accept', n, v), to= responded)
                 output('### chose', n, v)
-                self.count += 1
+                
+        elif timeout(tp): #taken from distalgo distribution lapaxos.da
+            output('failed proposal number', n)
+
+        self.total_rounds += 1
+        time.sleep(w)
 
     def receive(msg= ('done',)):          ##
         output('terminating'); 
-        output('checkoutput', self.count);
+        send(('correctness', self.values_proposed), to=dr)
+        send(('timing', time.process_time()), to=dr)
         exit()     ##
 
     def run():
         while True: to_consent()
 
 class Acceptor_to(process):
-    def setup(learners): pass
+    def setup(learners, dr, r:int): pass
 
     def receive(msg= ('prepare', n), from_= p):
         #output('acceptedmsg', n, p)
@@ -115,68 +142,77 @@ class Acceptor_to(process):
             #output('enter', n, n2, p)
             max_prop = anyof(setof((n, v), sent(('accepted', n, v)),
                                    n==max(setof(n, sent(('accepted', n, _))))))
+
             send(('respond', n, max_prop), to= p)
 
     def receive(msg= ('accept', n, v)):
         if not some(sent(('respond', n2, _)), has= n2 > n):
             send(('accepted', n, v), to= learners)
-
+            send(('acceptor_choose', v), to=dr)
     def receive(msg= ('done',)):          ##
-        output('terminating'); exit()     ##
+        output('terminating'); 
+        send(('timing', time.process_time()), to=dr)
+        exit()     ##
 
     def run():
         await(False)
 
 class Learner_to(process):
-    def setup(acceptors): pass
+    def setup(acceptors, tl:int, dr): pass
 
     def learn():
         if await(some(received(('accepted', n, v)),
                       has= len(setof(a, received(('accepted', _n, _v), from_=a)))
                            > len(acceptors)/2)):
             output('learned', n, v)
+            send(('learners', v), to= dr)
+        elif timeout(tl): #taken from distalgo distribution lapaxos.da
+            output('Acceptor quitting')
+
 
     def run():
         learn()
         output('terminating')
-
+        send(('timing', time.process_time()), to=dr)
+        exit()
 
 ####
 class Proposer_pe(process):
-    def setup(acceptors,  r:int, d:int, w:int):
+    def setup(acceptors,  r:int, d:int, w:int, dr):
         self.n = None              # proposal number
         self.majority = acceptors  # majority of acceptors; all in other papers
-        self.count = 0
-
+        self.values_proposed = []
+        self.total_rounds = 0
     def to_consent():
         n = (0, self.id) if n == None else (n[0]+1, self.id)  # pick a prop num
-        send(('prepare', n), to= majority)
+        time.sleep(d)
+        send(('prepare', n), to= loss_array(majority, r))
 
         t = time.clock()
 
-        if await((len(setof(a, received(('respond', _n, _), from_= a))) > len(acceptors)/2) or received(('reject', n), from_=a)):
-            if (len(setof(a, received(('respond', _n, _), from_= a))) <= len(acceptors)/2):
-                output('preempting round :', n)
-                self.count = 1 #
-            else:
+        if await((len(setof(a, received(('respond', _n, _), from_= a))) > len(acceptors)/2) or received(('reject', n))):
                 v = anyof(setof(v, received(('respond', _n, (n2, v))),
                                 n2==max(setof(n2, received(('respond', _n, (n2, _))))))
                           or {randint(1,100)})  # pick any value, here in 1..100
                 responded = setof(a, received(('respond', _n, _), from_= a))
+                time.sleep(d)
+                self.values_proposed.append(v)
                 send(('accept', n, v), to= responded)
                 output('### chose', n, v)
-                self.count += 1
+        self.total_rounds += 1
+        time.sleep(w)
 
     def receive(msg= ('done',)):          ##
         output('terminating'); 
-        output('checkoutput', self.count);
+        send(('correctness', self.values_proposed), to=dr)
+        send(('timing', time.process_time()), to=dr)
         exit()     ##
 
     def run():
         while True: to_consent()
 
 class Acceptor_pe(process):
-    def setup(learners): 
+    def setup(learners, dr, r:int): 
         last_preempt = None
     def receive(msg= ('prepare', n), from_= p):
         #output('acceptedmsg', n, p)
@@ -184,69 +220,82 @@ class Acceptor_pe(process):
             #output('enter', n, n2, p)
             max_prop = anyof(setof((n, v), sent(('accepted', n, v)),
                                    n==max(setof(n, sent(('accepted', n, _))))))
+
             send(('respond', n, max_prop), to= p)
         else:
             send(('reject', n), to=p)            
     def receive(msg= ('accept', n, v)):
         if not some(sent(('respond', n2, _)), has= n2 > n):
             send(('accepted', n, v), to= learners)
-
+            send(('acceptor_choose', v), to=dr)
     def receive(msg= ('done',)):          ##
-        output('terminating'); exit()     ##
+        output('terminating'); 
+        send(('timing', time.process_time()), to=dr)
+        exit()     ##
 
     def run():
         await(False)
 
 class Learner_pe(process):
-    def setup(acceptors): pass
+    def setup(acceptors, dr): pass
 
     def learn():
         if await(some(received(('accepted', n, v)),
                       has= len(setof(a, received(('accepted', _n, _v), from_=a)))
                            > len(acceptors)/2)):
+            send(('learners', v), to= dr)
             output('learned', n, v)
 
     def run():
         learn()
         output('terminating')
+        send(('timing', time.process_time()), to=dr)
+        exit()
 
 ####
 
 class Proposer_peto(process):
-    def setup(acceptors,  r:int, d:int, w:int):
+    def setup(acceptors,  r:int, d:int, w:int, tp:int, dr):
         self.n = None              # proposal number
         self.majority = acceptors  # majority of acceptors; all in other papers
-        self.count = 0
-
+        self.values_proposed = []
+        self.total_rounds = 0
     def to_consent():
         n = (0, self.id) if n == None else (n[0]+1, self.id)  # pick a prop num
-        send(('prepare', n), to= majority)
+        time.sleep(d)
+        send(('prepare', n), to= loss_array(majority, r))
 
         t = time.clock()
 
-        if await((len(setof(a, received(('respond', _n, _), from_= a))) > len(acceptors)/2) or time.clock() >= t + 1):
+        if await((len(setof(a, received(('respond', _n, _), from_= a))) > len(acceptors)/2)):
             
-            if (len(setof(a, received(('respond', _n, _), from_= a))) <= len(acceptors)/2):
-                self.count = 1
-            else:
-                v = anyof(setof(v, received(('respond', _n, (n2, v))),
-                                n2==max(setof(n2, received(('respond', _n, (n2, _))))))
-                          or {randint(1,100)})  # pick any value, here in 1..100
-                responded = setof(a, received(('respond', _n, _), from_= a))
-                send(('accept', n, v), to= responded)
-                output('### chose', n, v)
-                self.count += 1
+            v = anyof(setof(v, received(('respond', _n, (n2, v))),
+                            n2==max(setof(n2, received(('respond', _n, (n2, _))))))
+                      or {randint(1,100)})  # pick any value, here in 1..100
+            responded = setof(a, received(('respond', _n, _), from_= a))
+            time.sleep(d)
+            self.values_proposed.append(v)
+
+            send(('accept', n, v), to= responded)
+            output('### chose', n, v)
+
+
+        elif timeout(tp): #taken from distalgo distribution lapaxos.da
+            output('failed proposal number', n)
+        self.total_rounds += 1
+        time.sleep(w)
 
     def receive(msg= ('done',)):          ##
         output('terminating'); 
-        output('checkoutput', self.count);
+        send(('correctness', self.values_proposed), to=dr)
+        send(('timing', time.process_time()), to=dr)
         exit()     ##
 
     def run():
         while True: to_consent()
 
 class Acceptor_peto(process):
-    def setup(learners): pass
+    def setup(learners, dr, r:int): pass
 
     def receive(msg= ('prepare', n), from_= p):
         #output('acceptedmsg', n, p)
@@ -259,86 +308,201 @@ class Acceptor_peto(process):
     def receive(msg= ('accept', n, v)):
         if not some(sent(('respond', n2, _)), has= n2 > n):
             send(('accepted', n, v), to= learners)
-
+            send(('acceptor_choose', v), to=dr)
     def receive(msg= ('done',)):          ##
-        output('terminating'); exit()     ##
+
+        output('terminating'); 
+        send(('timing', time.process_time()), to=dr)
+        exit()     ##
 
     def run():
         await(False)
 
 class Learner_peto(process):
-    def setup(acceptors): pass
+    def setup(acceptors, tl:int, dr): pass
 
     def learn():
         if await(some(received(('accepted', n, v)),
                       has= len(setof(a, received(('accepted', _n, _v), from_=a)))
                            > len(acceptors)/2)):
+            send(('learners', v), to= dr)
             output('learned', n, v)
-
+        elif timeout(tl): #taken from distalgo distribution lapaxos.da
+            output('Acceptor terminating')
     def run():
         learn()
         output('terminating')
-
+        send(('timing', time.process_time()), to=dr)
+        exit()
 ####
+
 class driverclass(process):
     #p - process a - aceptors l - listeners n - rounds, r-drop, d - delay, w -w wait tp - timeout tl - listener timeout
-    def setup(p:int, a:int, l:int, n:int, r:int,d:int ,w:int, tp:int ,tl:int):
-        pass
+    def setup(pal:int, a:int, l:int, n:int, r:int,d:int ,w:int, tp:int ,tl:int):
+        self.f = open("correctness_output", "w")
+        self.proposed_values_set = set()
+        self.learners_values = set()
+        self.learners_count = 0
+        self.accepted_values = set()
+        self.proposer_count = 0
+        self.time_sum = 0
+    def safety_check(round1, algo):
+        await(self.learners_count >= l/2)
+        await(self.proposer_count >= pal)
+        if len(self.learners_values) > 1:
+            self.f.write("round"+str(round1)+ "for algorithm" + algo+ "falied. "+"More than 1 values accepted. Correctness condition 2 violated. ...failed... Learner : "+str(self.learners_values)+"\n ")
+        elif len(self.learners_values.difference(self.proposed_values_set)) != 0:
+            self.f.write("round "+str(round1)+ " for algorithm " + algo+ " falied. "+" Accepted values not one of the proposed values. Correctness condition 1 violated. ...failed... Learner values:"+str(self.learners_values)+"\n"+str(self.proposed_values_set))
+        elif len(self.learners_values.difference(self.accepted_values)) != 0:
+            self.f.write("round"+str(round1)+ "for algorithm" + algo+ "falied. "+"Learner has learnt a value that has not been chosen by acceptor. Correctness condition 3 violated. ...failed... Learner Values: "+str(self.learners_values)+"Acceptor Values:"+str(self.accepted_values)+"\n")
+        else:
+            self.f.write("All correctness tests for round "+str(round1)+ " for algorithm " + algo+ " passed. Learner Values: " + str(self.learners_values)+"\n")
+        self.proposed_values_set.clear()
+        self.learners_values.clear()
+        self.learners_count = 0
+        self.accepted_values.clear()
+        self.proposer_count = 0
+        self.f.flush()  
+    def receive(msg=('correctness', s)):
+        for el in s:
+            self.proposed_values_set.add(el)
+        self.proposer_count +=1
+    def receive(msg=('learners', val)):
+        self.learners_values.add(val)
+        self.learners_count += 1
 
-    def run():
+    def receive(msg=('acceptor_choose', val)):
+        self.accepted_values.add(val)
+
+    def receive(msg=('timing', x)):
+        self.time_sum += x
+
+    def graph_draw(time_dict, ind, r_d, d_d, w_d):
+        fig1, ax1 = plt.subplots()
+        fig1.suptitle('')
+        # ax1 = fig1.add_subplot(111)
         
+        
+        original_mix = []
+        to_mix = []
+        pr_mix = []
+        prto_mix = []
+        for w_dd in sorted(w_d):
+            original = 0
+            to = 0
+            pr = 0
+            prto = 0
+            count = 0
+            for r_dd in r_d:
+                for d_dd in d_d:
+                    original += time_dict[(r_dd, d_dd, w_dd)][0]
+                    to += time_dict[(r_dd, d_dd, w_dd)][1]
+                    pr += time_dict[(r_dd, d_dd, w_dd)][2]
+                    prto+= time_dict[(r_dd, d_dd, w_dd)][3]
+                    count += 1
+            original_mix.append(original/count)
+            to_mix.append(to/count)
+            pr_mix.append(pr/count)
+            prto_mix.append(prto/count)
 
-        #original
-        output(n)
+        ax1.plot(w_d, original_mix,'r', label="Original")
+        ax1.plot(w_d, to_mix,'b', label="Timeout")
+        ax1.plot(w_d, pr_mix,'y', label="Preemption")
+        ax1.plot(w_d, prto_mix,'r+', label="Preemption - Timeout")
+        plt.legend(loc=2, borderaxespad=0.)
+        ax1.set_xlabel("Wait Time between rounds ( In seconds)")
+        ax1.set_ylabel("Total Process time ")
+        lower_limit_y = min((min(original_mix), min(to_mix), min(pr_mix), min(prto_mix))) - 1
+        upper_limit_y = max((max(original_mix), max(to_mix), max(pr_mix), max(prto_mix))) + 1
+        ax1.axis((min(w_d)-1,max(w_d)+1, lower_limit_y, upper_limit_y))
+        plt.show()
+    def runner(r, d, w):
+        timer_avg = 0
+        time_algo  = [None, None, None, None]
         for i in range(n):
             acceptors = new(Acceptor_orig, num= a)
-            proposers = new(Proposer_orig, num= p)
+            proposers = new(Proposer_orig, num= pal)
             learners = new(Learner_orig,num= l)
-            for p in acceptors: setup(p, (learners,))
-            for p in proposers: setup(p, (acceptors, r, d, w))
-            for p in learners: setup(p, (acceptors,))
+            for p in acceptors: setup(p, (learners, self.id, r))
+            for p in proposers: setup(p, (acceptors, r, d, w, self.id))
+            for p in learners: setup(p, (acceptors, self.id))
             start(acceptors | proposers | learners)
-
             for p in learners: p.join()           ##
             da.send(('done',), to= (acceptors | proposers))  ## da.send not in da-lang
+            safety_check(i, " <original> ")
+            timer_avg +=self.time_sum
+            self.time_sum =0
+        time_algo[0] = timer_avg/(n *(a + pal + l))
         #timeout
         for i in range(n):
-            acceptors = new(Acceptor_orig, num= a)
-            proposers = new(Proposer_orig, num= p)
-            learners = new(Learner_orig,num= l)
-            for p in acceptors: setup(p, (learners,))
-            for p in proposers: setup(p, (acceptors, r, d, w))
-            for p in learners: setup(p, (acceptors,))
+            acceptors = new(Acceptor_to, num= a)
+            proposers = new(Proposer_to, num= pal)
+            learners = new(Learner_to,num= l)
+            for p in acceptors: setup(p, (learners,self.id, r))
+            for p in proposers: setup(p, (acceptors, r, d, w, tp, self.id))
+            for p in learners: setup(p, (acceptors, tl, self.id))
+            start(acceptors | proposers | learners)
+            for p in learners: p.join()           ##
+            da.send(('done',), to= (acceptors | proposers))  ## da.send not in da-lang
+            safety_check(i, " <timeout> ")
+            timer_avg +=self.time_sum
+            self.time_sum =0
+        time_algo[1] = timer_avg/(n *(a + pal + l))
+
+        #preemption
+        for i in range(n):
+            acceptors = new(Acceptor_pe, num= a)
+            proposers = new(Proposer_pe, num= pal)
+            learners = new(Learner_pe,num= l)
+            for p in acceptors: setup(p, (learners, self.id, r))
+            for p in proposers: setup(p, (acceptors, r, d, w, self.id))
+            for p in learners: setup(p, (acceptors, self.id))
             start(acceptors | proposers | learners)
 
             for p in learners: p.join()           ##
             da.send(('done',), to= (acceptors | proposers))  ## da.send not in da-lang
+            safety_check(i, "<preemption>")
+            timer_avg +=self.time_sum
+            self.time_sum =0
+        time_algo[2] = timer_avg/(n *(a + pal + l))
+        #preemption-timeout
+        for i in range(n):
+            acceptors = new(Acceptor_peto, num= a)
+            proposers = new(Proposer_peto, num= pal)
+            learners = new(Learner_peto,num= l)
+            for p in acceptors: setup(p, (learners, self.id, r))
+            for p in proposers: setup(p, (acceptors, r, d, w, tp, self.id))
+            for p in learners: setup(p, (acceptors,tl, self.id))
+            start(acceptors | proposers | learners)
 
-        
-
-        # #preemption
-        # for i in range(n):
-        #     acceptors = new(Acceptor_pe, num= a)
-        #     proposers = new(Proposer_pe, (acceptors,), num= p)
-        #     learners = new(Learner_pe, (acceptors,  r, d, w), num= l)
-        #     for p in acceptors: setup(p, (learners))
-        #     start(acceptors | proposers | learners)
-
-        #     for p in learners: p.join()           ##
-        #     print('done')                         ##
-        #     da.send(('done',), to= (acceptors | proposers))  ## da.send not in da-lang
-
-        # #preemption-timeout
-        # for i in range(n):
-        #     acceptors = new(Acceptor_peto, num= a)
-        #     proposers = new(Proposer_peto, (acceptors,), num= p)
-        #     learners = new(Learner_peto, (acceptors,  r, d, w), num= l)
-        #     for p in acceptors: setup(p, (learners))
-        #     start(acceptors | proposers | learners)
-
-        #     for p in learners: p.join()           ##
-        #     print('done')                         ##
-        #     da.send(('done',), to= (acceptors | proposers))  ## da.send not in da-lang
+            for p in learners: p.join()           ##
+            da.send(('done',), to= (acceptors | proposers))  ## da.send not in da-lang
+            safety_check(i, "<preemption-timeout>")
+            timer_avg +=self.time_sum
+            self.time_sum =0
+        time_algo[3] = timer_avg/(n *(a + pal + l))
+        return time_algo
+    def run():
+        x = 0   
+        #original
+        f.write("The safety requirements for consensus are:\n")
+        f.write("1. Only a value that has been proposed may be chosen\n")
+        f.write("2. Only a single value is chosen\n")
+        f.write("3. A process never learns that a value has been chosen unless it actually has been.\n")
+        m = 0
+        ans = {}
+        if m == 0:
+            r_d = np.linspace(0, r, 3)
+            d_d = np.linspace(0, d, 3)
+            w_d = np.linspace(0, w, 5)
+            # output(r_d, d_d, w_d)
+            for r_dd in r_d:
+                for d_dd in d_d:
+                    for w_dd in w_d:
+                        ans[(r_dd, d_dd, w_dd)] = runner(r_dd, d_dd, w_dd)
+                        
+        #output(ans)
+        exit()
 
 def main():
     # "p", "a", "r" are the number of proposers, acceptors, and learners, respectively,
@@ -351,16 +515,14 @@ def main():
     a = int(sys.argv[2]) if len(sys.argv) > 2 else 1 #
     l = int(sys.argv[3]) if len(sys.argv) > 3 else 1 #
     n = int(sys.argv[4]) if len(sys.argv) > 4 else 1 #
-    r = int(sys.argv[5]) if len(sys.argv) > 5 else 1 #
+    r = int(sys.argv[5]) if len(sys.argv) > 5 else 0.4 #
     d = int(sys.argv[6]) if len(sys.argv) > 6 else 1 # "d" is the message delay, up to the number of seconds specified,
     w = int(sys.argv[7]) if len(sys.argv) > 7 else 1 # "w" is the wait time, in seconds, before trying a new round,
-    tp = int(sys.argv[8]) if len(sys.argv) > 8 else 1 # "tp" and "tl" are the timeout, in seconds, by proposers and learners, respectively, when timeout is used.
-    tl = int(sys.argv[9]) if len(sys.argv) > 9 else 1 #
-    config(channel='reliable')
+    tp = int(sys.argv[8]) if len(sys.argv) > 8 else 2 # "tp" and "tl" are the timeout, in seconds, by proposers and learners, respectively, when timeout is used.
+    tl = int(sys.argv[9]) if len(sys.argv) > 9 else 50 #
     driver = new(driverclass, num=1)
     setup(driver, (p, a, l, n, r, d, w, tp, tl))
     start(driver)
-
 # This is an executable specification of the algorithm described in
 # Lamport, L. (2001).  Paxos Made Simple.  ACM SIGACT News 
 # (Distributed Computing Column), 32(4):51-58, December.
