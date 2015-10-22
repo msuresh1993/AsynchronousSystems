@@ -3,6 +3,7 @@ from random import randint
 import time
 import copy
 import numpy as np
+import matplotlib.pyplot as plt
 # orig = import_da('orig')
 
 
@@ -338,7 +339,7 @@ class Learner_peto(process):
 
 class driverclass(process):
     #p - process a - aceptors l - listeners n - rounds, r-drop, d - delay, w -w wait tp - timeout tl - listener timeout
-    def setup(pal:int, a:int, l:int, n:int, r:int,d:int ,w:int, tp:int ,tl:int):
+    def setup(pal:int, a:int, l:int, n:int, r:int,d:int ,w:int, tp:int ,tl:int, ml:int, de:int, wa:int):
         self.f = open("correctness_output", "w")
         self.proposed_values_set = set()
         self.learners_values = set()
@@ -377,9 +378,18 @@ class driverclass(process):
     def receive(msg=('timing', x)):
         self.time_sum += x
 
-    def graph_draw(time_dict, ind, r_d, d_d, w_d):
+    def helper_index(w_dd, r_dd, d_dd, num):
+        if num == 1:
+            hashind = (r_dd, d_dd, w_dd)
+        elif num == 2:
+            hashind = (w_dd, d_dd, r_dd)
+        elif num == 3:
+            hashind = (r_dd, w_dd, d_dd)
+        return hashind
+    def generate_permutations(w_d, r_d, d_d, num, time_dict, title, xlabel, ylabel):
+        
         fig1, ax1 = plt.subplots()
-        fig1.suptitle('')
+        fig1.suptitle(title)
         # ax1 = fig1.add_subplot(111)
         
         
@@ -387,38 +397,177 @@ class driverclass(process):
         to_mix = []
         pr_mix = []
         prto_mix = []
+
+        
         for w_dd in sorted(w_d):
             original = 0
             to = 0
             pr = 0
             prto = 0
             count = 0
+            
             for r_dd in r_d:
                 for d_dd in d_d:
-                    original += time_dict[(r_dd, d_dd, w_dd)][0]
-                    to += time_dict[(r_dd, d_dd, w_dd)][1]
-                    pr += time_dict[(r_dd, d_dd, w_dd)][2]
-                    prto+= time_dict[(r_dd, d_dd, w_dd)][3]
+                    hashind = helper_index(w_dd, r_dd, d_dd, num)
+                    original += time_dict[hashind][0]
+                    to += time_dict[hashind][1]
+                    pr += time_dict[hashind][2]
+                    prto+= time_dict[hashind][3]
                     count += 1
-            original_mix.append(original/count)
-            to_mix.append(to/count)
-            pr_mix.append(pr/count)
-            prto_mix.append(prto/count)
+            original_mix.append(original*1000/count)
+            to_mix.append(to*1000/count)
+            pr_mix.append(pr*1000/count)
+            prto_mix.append(prto*1000/count)
+            
 
         ax1.plot(w_d, original_mix,'r', label="Original")
         ax1.plot(w_d, to_mix,'b', label="Timeout")
         ax1.plot(w_d, pr_mix,'y', label="Preemption")
-        ax1.plot(w_d, prto_mix,'r+', label="Preemption - Timeout")
+        ax1.plot(w_d, prto_mix,'g', label="Preemption - Timeout")
+        
         plt.legend(loc=2, borderaxespad=0.)
-        ax1.set_xlabel("Wait Time between rounds ( In seconds)")
-        ax1.set_ylabel("Total Process time ")
+        ax1.set_xlabel(xlabel)
+        ax1.set_ylabel(ylabel)
         lower_limit_y = min((min(original_mix), min(to_mix), min(pr_mix), min(prto_mix))) - 1
         upper_limit_y = max((max(original_mix), max(to_mix), max(pr_mix), max(prto_mix))) + 1
+        mu = np.array(original_mix).mean()
+        sigma = np.array(original_mix).std()
+        mu1 = np.array(to_mix).mean()
+        sigma1 = np.array(to_mix).std()
+        mu2 = np.array(pr_mix).mean()
+        sigma2 = np.array(prto_mix).std()
+        mu3 = np.array(prto_mix).mean()
+        sigma3 = np.array(original_mix).std()
         ax1.axis((min(w_d)-1,max(w_d)+1, lower_limit_y, upper_limit_y))
+        textstr = '$Original$\n$\mu=%.2f$\n$\sigma=%.2f$\n$timeout$\n$\mu=%.2f$\n$\sigma=%.2f$\n$Preemption$\n$\mu=%.2f$\n$\sigma=%.2f$\n$Preemption-timeout$\n$\mu=%.2f$\n$\sigma=%.2f$'%(mu, sigma,mu1, sigma1,mu2, sigma2, mu3, sigma3)
+        # place a text box in upper left in axes coords
+        props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
+        ax1.text(.80, 0.95, textstr, transform=ax1.transAxes, fontsize=14,
+        verticalalignment='top', bbox=props)
+
+    def graph_draw(time_dict, tot_dict, ind, r_d, d_d, w_d):
+        
+        
+        generate_permutations(w_d, r_d, d_d, 1,time_dict, "Process Time Vs Waittime each round", "Waiting time in Second(s)", "Total Process time for each run(in Milliseconds)")
+        generate_permutations(r_d, w_d, d_d, 2,time_dict, "Process Time Vs Message Loss each round", "Message Loss in Fraction", "Total Process time for each run(in Milliseconds)")
+        generate_permutations(d_d, r_d, w_d, 3,time_dict, "Process Time Vs Waittime each round", "Delay in Second(s)", "Total Process time for each run(in Milliseconds)")
+
+        generate_permutations(w_d, r_d, d_d, 1, tot_dict, "Turnaround Time Vs Waittime each round", "Waiting time in Second(s)", "Total Turnaround Time for each run(in Milliseconds)")
+        generate_permutations(r_d, w_d, d_d, 2, tot_dict, "Turnaround Time Vs Message Loss each round", "Message Loss in Fraction", "Total Turnaround Time for each run(in Milliseconds)")
+        generate_permutations(d_d, r_d, w_d, 3, tot_dict, "Turnaround Time Vs Waittime each round", "Delay in Second(s)", "Total Turnaround Time for each run(in Milliseconds)")
+
+        # fig1, ax1 = plt.subplots()
+        # fig1.suptitle('')
+        # # ax1 = fig1.add_subplot(111)
+        # original_mix = []
+        # to_mix = []
+        # pr_mix = []
+        # prto_mix = []
+
+        
+        # for w_dd in sorted(w_d):
+        #     original = 0
+        #     to = 0
+        #     pr = 0
+        #     prto = 0
+        #     count = 0
+            
+        #     for r_dd in r_d:
+        #         for d_dd in d_d:
+        #             original += time_dict[(r_dd, d_dd, w_dd)][0]
+        #             to += time_dict[(r_dd, d_dd, w_dd)][1]
+        #             pr += time_dict[(r_dd, d_dd, w_dd)][2]
+        #             prto+= time_dict[(r_dd, d_dd, w_dd)][3]
+        #             count += 1
+        #     original_mix.append(original*1000/count)
+        #     to_mix.append(to*1000/count)
+        #     pr_mix.append(pr*1000/count)
+        #     prto_mix.append(prto*1000/count)
+            
+
+        # ax1.plot(w_d, original_mix,'r', label="Original")
+        # ax1.plot(w_d, to_mix,'b', label="Timeout")
+        # ax1.plot(w_d, pr_mix,'y', label="Preemption")
+        # ax1.plot(w_d, prto_mix,'g', label="Preemption - Timeout")
+        
+        # plt.legend(loc=2, borderaxespad=0.)
+        # ax1.set_xlabel("Wait Time between rounds ( In seconds)")
+        # ax1.set_ylabel("Total Process time ")
+        # lower_limit_y = min((min(original_mix), min(to_mix), min(pr_mix), min(prto_mix))) - 1
+        # upper_limit_y = max((max(original_mix), max(to_mix), max(pr_mix), max(prto_mix))) + 1
+        # mu = np.array(original_mix).mean()
+        # sigma = np.array(original_mix).std()
+        # mu1 = np.array(to_mix).mean()
+        # sigma1 = np.array(to_mix).std()
+        # mu2 = np.array(pr_mix).mean()
+        # sigma2 = np.array(prto_mix).std()
+        # mu3 = np.array(prto_mix).mean()
+        # sigma3 = np.array(original_mix).std()
+        # ax1.axis((min(w_d)-1,max(w_d)+1, lower_limit_y, upper_limit_y))
+        # textstr = '$Original$\n$\mu=%.2f$\n$\sigma=%.2f$\n$timeout$\n$\mu=%.2f$\n$\sigma=%.2f$\n$Preemption$\n$\mu=%.2f$\n$\sigma=%.2f$\n$Preemption-timeout$\n$\mu=%.2f$\n$\sigma=%.2f$'%(mu, sigma,mu1, sigma1,mu2, sigma2, mu3, sigma3)
+        # # place a text box in upper left in axes coords
+        # props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
+        # ax1.text(.80, 0.95, textstr, transform=ax1.transAxes, fontsize=14,
+        # verticalalignment='top', bbox=props)
+
+
+        # fig2, ax2 = plt.subplots()
+        # fig2.suptitle('')
+        # # ax1 = fig1.add_subplot(111)
+        
+
+        # original_mix_2 = []
+        # to_mix_2 = []
+        # pr_mix_2 = []
+        # prto_mix_2 = []
+        # for w_dd in sorted(w_d):
+        #     original1 = 0
+        #     to1 = 0
+        #     pr1= 0
+        #     prto1 = 0
+        #     for r_dd in r_d:
+        #         for d_dd in d_d:
+        #             original1 += tot_dict[(r_dd, d_dd, w_dd)][0]
+        #             to1 += tot_dict[(r_dd, d_dd, w_dd)][1]
+        #             pr1 += tot_dict[(r_dd, d_dd, w_dd)][2]
+        #             prto1+= tot_dict[(r_dd, d_dd, w_dd)][3]
+        #             count += 1
+        #     original_mix_2.append(original1/count)
+        #     to_mix_2.append(to1*1000/count)
+        #     pr_mix_2.append(pr1*1000/count)
+        #     prto_mix_2.append(prto1*1000/count)
+
+        
+        # ax2.plot(w_d, original_mix_2,'r', label="Original", linestyle="--")
+        # ax2.plot(w_d, to_mix_2,'b', label="Timeout", linestyle="--")
+        # ax2.plot(w_d, pr_mix_2,'y', label="Preemption", linestyle="--")
+        # ax2.plot(w_d, prto_mix_2,'g', label="Preemption - Timeout", linestyle="--")
+        # plt.legend(loc=2, borderaxespad=0.)
+        # ax2.set_xlabel("Wait Time between rounds ( In seconds)")
+        # ax2.set_ylabel("Total Response time ")
+        # lower_limit_y = min((min(original_mix_2), min(to_mix_2), min(pr_mix_2), min(prto_mix_2))) - 1
+        # upper_limit_y = max((max(original_mix_2), max(to_mix_2), max(pr_mix_2), max(prto_mix_2))) + 1
+        # mu = np.array(original_mix_2).mean()
+        # sigma = np.array(original_mix_2).std()
+        # mu1 = np.array(to_mix_2).mean()
+        # sigma1 = np.array(to_mix_2).std()
+        # mu2 = np.array(pr_mix_2).mean()
+        # sigma2 = np.array(prto_mix_2).std()
+        # mu3 = np.array(prto_mix_2).mean()
+        # sigma3 = np.array(original_mix_2).std()
+        # ax2.axis((min(w_d)-1,max(w_d)+1, lower_limit_y, upper_limit_y))
+        # textstr = '$Original$\n$\mu=%.2f$\n$\sigma=%.2f$\n$timeout$\n$\mu=%.2f$\n$\sigma=%.2f$\n$Preemption$\n$\mu=%.2f$\n$\sigma=%.2f$\n$Preemption-timeout$\n$\mu=%.2f$\n$\sigma=%.2f$'%(mu, sigma,mu1, sigma1,mu2, sigma2, mu3, sigma3)
+        # # place a text box in upper left in axes coords
+        # props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
+        # ax2.text(.80, 0.95, textstr, transform=ax2.transAxes, fontsize=14,
+        # verticalalignment='top', bbox=props)
+
         plt.show()
     def runner(r, d, w):
         timer_avg = 0
         time_algo  = [None, None, None, None]
+        time_algo2 = [None, None, None, None]
+        t = time.clock()
         for i in range(n):
             acceptors = new(Acceptor_orig, num= a)
             proposers = new(Proposer_orig, num= pal)
@@ -432,8 +581,10 @@ class driverclass(process):
             safety_check(i, " <original> ")
             timer_avg +=self.time_sum
             self.time_sum =0
-        time_algo[0] = timer_avg/(n *(a + pal + l))
+        time_algo2[0] = (time.clock() - t)/n
+        time_algo[0] = timer_avg/(n)
         #timeout
+        t = time.clock()
         for i in range(n):
             acceptors = new(Acceptor_to, num= a)
             proposers = new(Proposer_to, num= pal)
@@ -447,9 +598,12 @@ class driverclass(process):
             safety_check(i, " <timeout> ")
             timer_avg +=self.time_sum
             self.time_sum =0
-        time_algo[1] = timer_avg/(n *(a + pal + l))
+
+        time_algo2[1] = (time.clock() - t)/n
+        time_algo[1] = timer_avg/(n)
 
         #preemption
+        t = time.clock()
         for i in range(n):
             acceptors = new(Acceptor_pe, num= a)
             proposers = new(Proposer_pe, num= pal)
@@ -464,8 +618,12 @@ class driverclass(process):
             safety_check(i, "<preemption>")
             timer_avg +=self.time_sum
             self.time_sum =0
-        time_algo[2] = timer_avg/(n *(a + pal + l))
+
+        time_algo2[2] = (time.clock() - t)/n
+        time_algo[2] = timer_avg/(n)
         #preemption-timeout
+
+        t = time.clock()
         for i in range(n):
             acceptors = new(Acceptor_peto, num= a)
             proposers = new(Proposer_peto, num= pal)
@@ -480,8 +638,10 @@ class driverclass(process):
             safety_check(i, "<preemption-timeout>")
             timer_avg +=self.time_sum
             self.time_sum =0
+
+        time_algo2[3] = (time.clock() - t)/n
         time_algo[3] = timer_avg/(n *(a + pal + l))
-        return time_algo
+        return (time_algo, time_algo2)
     def run():
         x = 0   
         #original
@@ -491,16 +651,19 @@ class driverclass(process):
         f.write("3. A process never learns that a value has been chosen unless it actually has been.\n")
         m = 0
         ans = {}
+        ans2 = {}
         if m == 0:
-            r_d = np.linspace(0, r, 3)
-            d_d = np.linspace(0, d, 3)
-            w_d = np.linspace(0, w, 5)
+            r_d = np.linspace(0, r, ml)
+            d_d = np.linspace(0, d, de)
+            w_d = np.linspace(0, w, wa)
             # output(r_d, d_d, w_d)
             for r_dd in r_d:
                 for d_dd in d_d:
                     for w_dd in w_d:
-                        ans[(r_dd, d_dd, w_dd)] = runner(r_dd, d_dd, w_dd)
-                        
+                        (a1, a2) = runner(r_dd, d_dd, w_dd)
+                        ans[(r_dd, d_dd, w_dd)] = a1
+                        ans2[(r_dd, d_dd, w_dd)] = a2
+            graph_draw(ans, ans2, 0, r_d, d_d, w_d)
         #output(ans)
         exit()
 
@@ -515,13 +678,16 @@ def main():
     a = int(sys.argv[2]) if len(sys.argv) > 2 else 1 #
     l = int(sys.argv[3]) if len(sys.argv) > 3 else 1 #
     n = int(sys.argv[4]) if len(sys.argv) > 4 else 1 #
-    r = int(sys.argv[5]) if len(sys.argv) > 5 else 0.4 #
+    r = int(sys.argv[5]) if len(sys.argv) > 5 else 0.2 #
     d = int(sys.argv[6]) if len(sys.argv) > 6 else 1 # "d" is the message delay, up to the number of seconds specified,
     w = int(sys.argv[7]) if len(sys.argv) > 7 else 1 # "w" is the wait time, in seconds, before trying a new round,
     tp = int(sys.argv[8]) if len(sys.argv) > 8 else 2 # "tp" and "tl" are the timeout, in seconds, by proposers and learners, respectively, when timeout is used.
     tl = int(sys.argv[9]) if len(sys.argv) > 9 else 50 #
+    ml = int(sys.argv[10]) if len(sys.argv) > 10 else 3 #
+    de = int(sys.argv[11]) if len(sys.argv) > 11 else 3 #
+    wa = int(sys.argv[12]) if len(sys.argv) > 12 else 3 #
     driver = new(driverclass, num=1)
-    setup(driver, (p, a, l, n, r, d, w, tp, tl))
+    setup(driver, (p, a, l, n, r, d, w, tp, tl, ml, de, wa))
     start(driver)
 # This is an executable specification of the algorithm described in
 # Lamport, L. (2001).  Paxos Made Simple.  ACM SIGACT News 

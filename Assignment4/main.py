@@ -83,6 +83,7 @@ from random import randint
 import time
 import copy
 import numpy as np
+import matplotlib.pyplot as plt
 
 def anyof(s):
     "return any element of set s if s is not empty or 'None' otherwise"
@@ -126,9 +127,9 @@ class Proposer_orig(da.DistProcess):
         self.n = ((0, self.id) if (self.n == None) else ((self.n[0] + 1), self.id))
         time.sleep(self.d)
         self._send(('prepare', self.n), loss_array(self.majority, self.r))
-        _st_label_28 = 0
-        while (_st_label_28 == 0):
-            _st_label_28 += 1
+        _st_label_29 = 0
+        while (_st_label_29 == 0):
+            _st_label_29 += 1
             if (len({a for (_, (_, _, a), (_ConstantPattern12_, _BoundPattern13_, _)) in self._Proposer_origReceivedEvent_0 if (_ConstantPattern12_ == 'respond') if (_BoundPattern13_ == self.n)}) > (len(self.acceptors) / 2)):
                 v = anyof(({v for (_, _, (_ConstantPattern28_, _BoundPattern29_, (n2, v))) in self._Proposer_origReceivedEvent_1 if (_ConstantPattern28_ == 'respond') if (_BoundPattern29_ == self.n) if (n2 == max({n2 for (_, _, (_ConstantPattern46_, _BoundPattern47_, (n2, _))) in self._Proposer_origReceivedEvent_2 if (_ConstantPattern46_ == 'respond') if (_BoundPattern47_ == self.n)}))} or {randint(1, 100)}))
                 self.values_proposed.append(v)
@@ -136,10 +137,10 @@ class Proposer_orig(da.DistProcess):
                 time.sleep(self.d)
                 self._send(('accept', self.n, v), responded)
                 self.output('### chose', self.n, v)
-                _st_label_28 += 1
+                _st_label_29 += 1
             else:
-                super()._label('_st_label_28', block=True)
-                _st_label_28 -= 1
+                super()._label('_st_label_29', block=True)
+                _st_label_29 -= 1
         self.total_rounds += 1
         time.sleep(self.w)
 
@@ -168,14 +169,14 @@ class Acceptor_orig(da.DistProcess):
         pass
 
     def _da_run_internal(self):
-        _st_label_61 = 0
-        while (_st_label_61 == 0):
-            _st_label_61 += 1
+        _st_label_62 = 0
+        while (_st_label_62 == 0):
+            _st_label_62 += 1
             if False:
-                _st_label_61 += 1
+                _st_label_62 += 1
             else:
-                super()._label('_st_label_61', block=True)
-                _st_label_61 -= 1
+                super()._label('_st_label_62', block=True)
+                _st_label_62 -= 1
 
     def _Acceptor_orig_handler_1(self, n, p):
         n2 = None
@@ -236,25 +237,25 @@ class Learner_orig(da.DistProcess):
         self.exit()
 
     def learn(self):
-        v = n = a = None
+        n = a = v = None
 
         def ExistentialOpExpr_2():
-            nonlocal v, n, a
+            nonlocal n, a, v
             for (_, _, (_ConstantPattern145_, n, v)) in self._Learner_origReceivedEvent_0:
                 if (_ConstantPattern145_ == 'accepted'):
                     if (len({a for (_, (_, _, a), (_ConstantPattern160_, _BoundPattern161_, _BoundPattern162_)) in self._Learner_origReceivedEvent_1 if (_ConstantPattern160_ == 'accepted') if (_BoundPattern161_ == n) if (_BoundPattern162_ == v)}) > (len(self.acceptors) / 2)):
                         return True
             return False
-        _st_label_66 = 0
-        while (_st_label_66 == 0):
-            _st_label_66 += 1
+        _st_label_67 = 0
+        while (_st_label_67 == 0):
+            _st_label_67 += 1
             if ExistentialOpExpr_2():
                 self.output('learned', n, v)
                 self._send(('learners', v), self.dr)
-                _st_label_66 += 1
+                _st_label_67 += 1
             else:
-                super()._label('_st_label_66', block=True)
-                _st_label_66 -= 1
+                super()._label('_st_label_67', block=True)
+                _st_label_67 -= 1
 
 class Proposer_to(da.DistProcess):
 
@@ -287,10 +288,10 @@ class Proposer_to(da.DistProcess):
         time.sleep(self.d)
         self._send(('prepare', self.n), loss_array(self.majority, self.r))
         t = time.clock()
-        _st_label_85 = 0
+        _st_label_86 = 0
         self._timer_start()
-        while (_st_label_85 == 0):
-            _st_label_85 += 1
+        while (_st_label_86 == 0):
+            _st_label_86 += 1
             if (len({a for (_, (_, _, a), (_ConstantPattern175_, _BoundPattern176_, _)) in self._Proposer_toReceivedEvent_0 if (_ConstantPattern175_ == 'respond') if (_BoundPattern176_ == self.n)}) > (len(self.acceptors) / 2)):
                 v = anyof(({v for (_, _, (_ConstantPattern191_, _BoundPattern192_, (n2, v))) in self._Proposer_toReceivedEvent_1 if (_ConstantPattern191_ == 'respond') if (_BoundPattern192_ == self.n) if (n2 == max({n2 for (_, _, (_ConstantPattern209_, _BoundPattern210_, (n2, _))) in self._Proposer_toReceivedEvent_2 if (_ConstantPattern209_ == 'respond') if (_BoundPattern210_ == self.n)}))} or {randint(1, 100)}))
                 responded = {a for (_, (_, _, a), (_ConstantPattern226_, _BoundPattern227_, _)) in self._Proposer_toReceivedEvent_3 if (_ConstantPattern226_ == 'respond') if (_BoundPattern227_ == self.n)}
@@ -298,13 +299,13 @@ class Proposer_to(da.DistProcess):
                 self.values_proposed.append(v)
                 self._send(('accept', self.n, v), responded)
                 self.output('### chose', self.n, v)
-                _st_label_85 += 1
+                _st_label_86 += 1
             elif self._timer_expired:
                 self.output('failed proposal number', self.n)
-                _st_label_85 += 1
+                _st_label_86 += 1
             else:
-                super()._label('_st_label_85', block=True, timeout=self.tp)
-                _st_label_85 -= 1
+                super()._label('_st_label_86', block=True, timeout=self.tp)
+                _st_label_86 -= 1
         self.total_rounds += 1
         time.sleep(self.w)
 
@@ -333,14 +334,14 @@ class Acceptor_to(da.DistProcess):
         pass
 
     def _da_run_internal(self):
-        _st_label_119 = 0
-        while (_st_label_119 == 0):
-            _st_label_119 += 1
+        _st_label_120 = 0
+        while (_st_label_120 == 0):
+            _st_label_120 += 1
             if False:
-                _st_label_119 += 1
+                _st_label_120 += 1
             else:
-                super()._label('_st_label_119', block=True)
-                _st_label_119 -= 1
+                super()._label('_st_label_120', block=True)
+                _st_label_120 -= 1
 
     def _Acceptor_to_handler_5(self, n, p):
         n2 = None
@@ -402,29 +403,29 @@ class Learner_to(da.DistProcess):
         self.exit()
 
     def learn(self):
-        v = n = a = None
+        n = v = a = None
 
         def ExistentialOpExpr_5():
-            nonlocal v, n, a
+            nonlocal n, v, a
             for (_, _, (_ConstantPattern308_, n, v)) in self._Learner_toReceivedEvent_0:
                 if (_ConstantPattern308_ == 'accepted'):
                     if (len({a for (_, (_, _, a), (_ConstantPattern323_, _BoundPattern324_, _BoundPattern325_)) in self._Learner_toReceivedEvent_1 if (_ConstantPattern323_ == 'accepted') if (_BoundPattern324_ == n) if (_BoundPattern325_ == v)}) > (len(self.acceptors) / 2)):
                         return True
             return False
-        _st_label_124 = 0
+        _st_label_125 = 0
         self._timer_start()
-        while (_st_label_124 == 0):
-            _st_label_124 += 1
+        while (_st_label_125 == 0):
+            _st_label_125 += 1
             if ExistentialOpExpr_5():
                 self.output('learned', n, v)
                 self._send(('learners', v), self.dr)
-                _st_label_124 += 1
+                _st_label_125 += 1
             elif self._timer_expired:
                 self.output('Acceptor quitting')
-                _st_label_124 += 1
+                _st_label_125 += 1
             else:
-                super()._label('_st_label_124', block=True, timeout=self.tl)
-                _st_label_124 -= 1
+                super()._label('_st_label_125', block=True, timeout=self.tl)
+                _st_label_125 -= 1
 
 class Proposer_pe(da.DistProcess):
 
@@ -457,9 +458,9 @@ class Proposer_pe(da.DistProcess):
         time.sleep(self.d)
         self._send(('prepare', self.n), loss_array(self.majority, self.r))
         t = time.clock()
-        _st_label_144 = 0
-        while (_st_label_144 == 0):
-            _st_label_144 += 1
+        _st_label_145 = 0
+        while (_st_label_145 == 0):
+            _st_label_145 += 1
             if ((len({a for (_, (_, _, a), (_ConstantPattern338_, _BoundPattern339_, _)) in self._Proposer_peReceivedEvent_0 if (_ConstantPattern338_ == 'respond') if (_BoundPattern339_ == self.n)}) > (len(self.acceptors) / 2)) or PatternExpr_60.match_iter(self._Proposer_peReceivedEvent_1, _BoundPattern352_=self.n)):
                 v = anyof(({v for (_, _, (_ConstantPattern366_, _BoundPattern367_, (n2, v))) in self._Proposer_peReceivedEvent_2 if (_ConstantPattern366_ == 'respond') if (_BoundPattern367_ == self.n) if (n2 == max({n2 for (_, _, (_ConstantPattern384_, _BoundPattern385_, (n2, _))) in self._Proposer_peReceivedEvent_3 if (_ConstantPattern384_ == 'respond') if (_BoundPattern385_ == self.n)}))} or {randint(1, 100)}))
                 responded = {a for (_, (_, _, a), (_ConstantPattern401_, _BoundPattern402_, _)) in self._Proposer_peReceivedEvent_4 if (_ConstantPattern401_ == 'respond') if (_BoundPattern402_ == self.n)}
@@ -467,10 +468,10 @@ class Proposer_pe(da.DistProcess):
                 self.values_proposed.append(v)
                 self._send(('accept', self.n, v), responded)
                 self.output('### chose', self.n, v)
-                _st_label_144 += 1
+                _st_label_145 += 1
             else:
-                super()._label('_st_label_144', block=True)
-                _st_label_144 -= 1
+                super()._label('_st_label_145', block=True)
+                _st_label_145 -= 1
         self.total_rounds += 1
         time.sleep(self.w)
 
@@ -499,14 +500,14 @@ class Acceptor_pe(da.DistProcess):
         last_preempt = None
 
     def _da_run_internal(self):
-        _st_label_178 = 0
-        while (_st_label_178 == 0):
-            _st_label_178 += 1
+        _st_label_179 = 0
+        while (_st_label_179 == 0):
+            _st_label_179 += 1
             if False:
-                _st_label_178 += 1
+                _st_label_179 += 1
             else:
-                super()._label('_st_label_178', block=True)
-                _st_label_178 -= 1
+                super()._label('_st_label_179', block=True)
+                _st_label_179 -= 1
 
     def _Acceptor_pe_handler_9(self, n, p):
         n2 = None
@@ -578,16 +579,16 @@ class Learner_pe(da.DistProcess):
                     if (len({a for (_, (_, _, a), (_ConstantPattern498_, _BoundPattern499_, _BoundPattern500_)) in self._Learner_peReceivedEvent_1 if (_ConstantPattern498_ == 'accepted') if (_BoundPattern499_ == n) if (_BoundPattern500_ == v)}) > (len(self.acceptors) / 2)):
                         return True
             return False
-        _st_label_183 = 0
-        while (_st_label_183 == 0):
-            _st_label_183 += 1
+        _st_label_184 = 0
+        while (_st_label_184 == 0):
+            _st_label_184 += 1
             if ExistentialOpExpr_8():
                 self._send(('learners', v), self.dr)
                 self.output('learned', n, v)
-                _st_label_183 += 1
+                _st_label_184 += 1
             else:
-                super()._label('_st_label_183', block=True)
-                _st_label_183 -= 1
+                super()._label('_st_label_184', block=True)
+                _st_label_184 -= 1
 
 class Proposer_peto(da.DistProcess):
 
@@ -620,10 +621,10 @@ class Proposer_peto(da.DistProcess):
         time.sleep(self.d)
         self._send(('prepare', self.n), loss_array(self.majority, self.r))
         t = time.clock()
-        _st_label_202 = 0
+        _st_label_203 = 0
         self._timer_start()
-        while (_st_label_202 == 0):
-            _st_label_202 += 1
+        while (_st_label_203 == 0):
+            _st_label_203 += 1
             if (len({a for (_, (_, _, a), (_ConstantPattern513_, _BoundPattern514_, _)) in self._Proposer_petoReceivedEvent_0 if (_ConstantPattern513_ == 'respond') if (_BoundPattern514_ == self.n)}) > (len(self.acceptors) / 2)):
                 v = anyof(({v for (_, _, (_ConstantPattern529_, _BoundPattern530_, (n2, v))) in self._Proposer_petoReceivedEvent_1 if (_ConstantPattern529_ == 'respond') if (_BoundPattern530_ == self.n) if (n2 == max({n2 for (_, _, (_ConstantPattern547_, _BoundPattern548_, (n2, _))) in self._Proposer_petoReceivedEvent_2 if (_ConstantPattern547_ == 'respond') if (_BoundPattern548_ == self.n)}))} or {randint(1, 100)}))
                 responded = {a for (_, (_, _, a), (_ConstantPattern564_, _BoundPattern565_, _)) in self._Proposer_petoReceivedEvent_3 if (_ConstantPattern564_ == 'respond') if (_BoundPattern565_ == self.n)}
@@ -631,13 +632,13 @@ class Proposer_peto(da.DistProcess):
                 self.values_proposed.append(v)
                 self._send(('accept', self.n, v), responded)
                 self.output('### chose', self.n, v)
-                _st_label_202 += 1
+                _st_label_203 += 1
             elif self._timer_expired:
                 self.output('failed proposal number', self.n)
-                _st_label_202 += 1
+                _st_label_203 += 1
             else:
-                super()._label('_st_label_202', block=True, timeout=self.tp)
-                _st_label_202 -= 1
+                super()._label('_st_label_203', block=True, timeout=self.tp)
+                _st_label_203 -= 1
         self.total_rounds += 1
         time.sleep(self.w)
 
@@ -666,14 +667,14 @@ class Acceptor_peto(da.DistProcess):
         pass
 
     def _da_run_internal(self):
-        _st_label_236 = 0
-        while (_st_label_236 == 0):
-            _st_label_236 += 1
+        _st_label_237 = 0
+        while (_st_label_237 == 0):
+            _st_label_237 += 1
             if False:
-                _st_label_236 += 1
+                _st_label_237 += 1
             else:
-                super()._label('_st_label_236', block=True)
-                _st_label_236 -= 1
+                super()._label('_st_label_237', block=True)
+                _st_label_237 -= 1
 
     def _Acceptor_peto_handler_13(self, n, p):
         n2 = None
@@ -735,29 +736,29 @@ class Learner_peto(da.DistProcess):
         self.exit()
 
     def learn(self):
-        v = n = a = None
+        n = v = a = None
 
         def ExistentialOpExpr_11():
-            nonlocal v, n, a
+            nonlocal n, v, a
             for (_, _, (_ConstantPattern646_, n, v)) in self._Learner_petoReceivedEvent_0:
                 if (_ConstantPattern646_ == 'accepted'):
                     if (len({a for (_, (_, _, a), (_ConstantPattern661_, _BoundPattern662_, _BoundPattern663_)) in self._Learner_petoReceivedEvent_1 if (_ConstantPattern661_ == 'accepted') if (_BoundPattern662_ == n) if (_BoundPattern663_ == v)}) > (len(self.acceptors) / 2)):
                         return True
             return False
-        _st_label_241 = 0
+        _st_label_242 = 0
         self._timer_start()
-        while (_st_label_241 == 0):
-            _st_label_241 += 1
+        while (_st_label_242 == 0):
+            _st_label_242 += 1
             if ExistentialOpExpr_11():
                 self._send(('learners', v), self.dr)
                 self.output('learned', n, v)
-                _st_label_241 += 1
+                _st_label_242 += 1
             elif self._timer_expired:
                 self.output('Acceptor terminating')
-                _st_label_241 += 1
+                _st_label_242 += 1
             else:
-                super()._label('_st_label_241', block=True, timeout=self.tl)
-                _st_label_241 -= 1
+                super()._label('_st_label_242', block=True, timeout=self.tl)
+                _st_label_242 -= 1
 
 class driverclass(da.DistProcess):
 
@@ -765,7 +766,7 @@ class driverclass(da.DistProcess):
         super().__init__(parent, initq, channel, props)
         self._events.extend([da.pat.EventPattern(da.pat.ReceivedEvent, '_driverclassReceivedEvent_0', PatternExpr_114, sources=None, destinations=None, timestamps=None, record_history=None, handlers=[self._driverclass_handler_16]), da.pat.EventPattern(da.pat.ReceivedEvent, '_driverclassReceivedEvent_1', PatternExpr_115, sources=None, destinations=None, timestamps=None, record_history=None, handlers=[self._driverclass_handler_17]), da.pat.EventPattern(da.pat.ReceivedEvent, '_driverclassReceivedEvent_2', PatternExpr_116, sources=None, destinations=None, timestamps=None, record_history=None, handlers=[self._driverclass_handler_18]), da.pat.EventPattern(da.pat.ReceivedEvent, '_driverclassReceivedEvent_3', PatternExpr_117, sources=None, destinations=None, timestamps=None, record_history=None, handlers=[self._driverclass_handler_19])])
 
-    def setup(self, pal, a, l, n, r, d, w, tp, tl):
+    def setup(self, pal, a, l, n, r, d, w, tp, tl, ml, de, wa):
         self.pal = pal
         self.a = a
         self.l = l
@@ -775,6 +776,9 @@ class driverclass(da.DistProcess):
         self.w = w
         self.tp = tp
         self.tl = tl
+        self.ml = ml
+        self.de = de
+        self.wa = wa
         self.f = open('correctness_output', 'w')
         self.proposed_values_set = set()
         self.learners_values = set()
@@ -791,33 +795,37 @@ class driverclass(da.DistProcess):
         self.f.write('3. A process never learns that a value has been chosen unless it actually has been.\n')
         m = 0
         ans = {}
+        ans2 = {}
         if (m == 0):
-            r_d = np.linspace(0, self.r, 3)
-            d_d = np.linspace(0, self.d, 3)
-            w_d = np.linspace(0, self.w, 5)
+            r_d = np.linspace(0, self.r, self.ml)
+            d_d = np.linspace(0, self.d, self.de)
+            w_d = np.linspace(0, self.w, self.wa)
             for r_dd in r_d:
                 for d_dd in d_d:
                     for w_dd in w_d:
-                        ans[(r_dd, d_dd, w_dd)] = self.runner(r_dd, d_dd, w_dd)
+                        (a1, a2) = self.runner(r_dd, d_dd, w_dd)
+                        ans[(r_dd, d_dd, w_dd)] = a1
+                        ans2[(r_dd, d_dd, w_dd)] = a2
+            self.graph_draw(ans, ans2, 0, r_d, d_d, w_d)
         self.exit()
 
     def safety_check(self, round1, algo):
-        _st_label_260 = 0
-        while (_st_label_260 == 0):
-            _st_label_260 += 1
-            if (self.learners_count >= (self.l / 2)):
-                _st_label_260 += 1
-            else:
-                super()._label('_st_label_260', block=True)
-                _st_label_260 -= 1
         _st_label_261 = 0
         while (_st_label_261 == 0):
             _st_label_261 += 1
-            if (self.proposer_count >= self.pal):
+            if (self.learners_count >= (self.l / 2)):
                 _st_label_261 += 1
             else:
                 super()._label('_st_label_261', block=True)
                 _st_label_261 -= 1
+        _st_label_262 = 0
+        while (_st_label_262 == 0):
+            _st_label_262 += 1
+            if (self.proposer_count >= self.pal):
+                _st_label_262 += 1
+            else:
+                super()._label('_st_label_262', block=True)
+                _st_label_262 -= 1
         if (len(self.learners_values) > 1):
             self.f.write(((((((('round' + str(round1)) + 'for algorithm') + algo) + 'falied. ') + 'More than 1 values accepted. Correctness condition 2 violated. ...failed... Learner : ') + str(self.learners_values)) + '\n '))
         elif (not (len(self.learners_values.difference(self.proposed_values_set)) == 0)):
@@ -833,9 +841,18 @@ class driverclass(da.DistProcess):
         self.proposer_count = 0
         self.f.flush()
 
-    def graph_draw(self, time_dict, ind, r_d, d_d, w_d):
+    def helper_index(self, w_dd, r_dd, d_dd, num):
+        if (num == 1):
+            hashind = (r_dd, d_dd, w_dd)
+        elif (num == 2):
+            hashind = (w_dd, d_dd, r_dd)
+        elif (num == 3):
+            hashind = (r_dd, w_dd, d_dd)
+        return hashind
+
+    def generate_permutations(self, w_d, r_d, d_d, num, time_dict, title, xlabel, ylabel):
         (fig1, ax1) = plt.subplots()
-        fig1.suptitle('')
+        fig1.suptitle(title)
         original_mix = []
         to_mix = []
         pr_mix = []
@@ -848,30 +865,52 @@ class driverclass(da.DistProcess):
             count = 0
             for r_dd in r_d:
                 for d_dd in d_d:
-                    original += time_dict[(r_dd, d_dd, w_dd)][0]
-                    to += time_dict[(r_dd, d_dd, w_dd)][1]
-                    pr += time_dict[(r_dd, d_dd, w_dd)][2]
-                    prto += time_dict[(r_dd, d_dd, w_dd)][3]
+                    hashind = self.helper_index(w_dd, r_dd, d_dd, num)
+                    original += time_dict[hashind][0]
+                    to += time_dict[hashind][1]
+                    pr += time_dict[hashind][2]
+                    prto += time_dict[hashind][3]
                     count += 1
-            original_mix.append((original / count))
-            to_mix.append((to / count))
-            pr_mix.append((pr / count))
-            prto_mix.append((prto / count))
+            original_mix.append(((original * 1000) / count))
+            to_mix.append(((to * 1000) / count))
+            pr_mix.append(((pr * 1000) / count))
+            prto_mix.append(((prto * 1000) / count))
         ax1.plot(w_d, original_mix, 'r', label='Original')
         ax1.plot(w_d, to_mix, 'b', label='Timeout')
         ax1.plot(w_d, pr_mix, 'y', label='Preemption')
-        ax1.plot(w_d, prto_mix, 'r+', label='Preemption - Timeout')
+        ax1.plot(w_d, prto_mix, 'g', label='Preemption - Timeout')
         plt.legend(loc=2, borderaxespad=0.0)
-        ax1.set_xlabel('Wait Time between rounds ( In seconds)')
-        ax1.set_ylabel('Total Process time ')
+        ax1.set_xlabel(xlabel)
+        ax1.set_ylabel(ylabel)
         lower_limit_y = (min((min(original_mix), min(to_mix), min(pr_mix), min(prto_mix))) - 1)
         upper_limit_y = (max((max(original_mix), max(to_mix), max(pr_mix), max(prto_mix))) + 1)
+        mu = np.array(original_mix).mean()
+        sigma = np.array(original_mix).std()
+        mu1 = np.array(to_mix).mean()
+        sigma1 = np.array(to_mix).std()
+        mu2 = np.array(pr_mix).mean()
+        sigma2 = np.array(prto_mix).std()
+        mu3 = np.array(prto_mix).mean()
+        sigma3 = np.array(original_mix).std()
         ax1.axis(((min(w_d) - 1), (max(w_d) + 1), lower_limit_y, upper_limit_y))
+        textstr = ('$Original$\n$\\mu=%.2f$\n$\\sigma=%.2f$\n$timeout$\n$\\mu=%.2f$\n$\\sigma=%.2f$\n$Preemption$\n$\\mu=%.2f$\n$\\sigma=%.2f$\n$Preemption-timeout$\n$\\mu=%.2f$\n$\\sigma=%.2f$' % (mu, sigma, mu1, sigma1, mu2, sigma2, mu3, sigma3))
+        props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
+        ax1.text(0.8, 0.95, textstr, transform=ax1.transAxes, fontsize=14, verticalalignment='top', bbox=props)
+
+    def graph_draw(self, time_dict, tot_dict, ind, r_d, d_d, w_d):
+        self.generate_permutations(w_d, r_d, d_d, 1, time_dict, 'Process Time Vs Waittime each round', 'Waiting time in Second(s)', 'Total Process time for each run(in Milliseconds)')
+        self.generate_permutations(r_d, w_d, d_d, 2, time_dict, 'Process Time Vs Message Loss each round', 'Message Loss in Fraction', 'Total Process time for each run(in Milliseconds)')
+        self.generate_permutations(d_d, r_d, w_d, 3, time_dict, 'Process Time Vs Waittime each round', 'Delay in Second(s)', 'Total Process time for each run(in Milliseconds)')
+        self.generate_permutations(w_d, r_d, d_d, 1, tot_dict, 'Turnaround Time Vs Waittime each round', 'Waiting time in Second(s)', 'Total Turnaround Time for each run(in Milliseconds)')
+        self.generate_permutations(r_d, w_d, d_d, 2, tot_dict, 'Turnaround Time Vs Message Loss each round', 'Message Loss in Fraction', 'Total Turnaround Time for each run(in Milliseconds)')
+        self.generate_permutations(d_d, r_d, w_d, 3, tot_dict, 'Turnaround Time Vs Waittime each round', 'Delay in Second(s)', 'Total Turnaround Time for each run(in Milliseconds)')
         plt.show()
 
     def runner(self, r, d, w):
         timer_avg = 0
         time_algo = [None, None, None, None]
+        time_algo2 = [None, None, None, None]
+        t = time.clock()
         for i in range(self.n):
             acceptors = da.new(Acceptor_orig, num=self.a)
             proposers = da.new(Proposer_orig, num=self.pal)
@@ -889,7 +928,9 @@ class driverclass(da.DistProcess):
             self.safety_check(i, ' <original> ')
             timer_avg += self.time_sum
             self.time_sum = 0
-        time_algo[0] = (timer_avg / (self.n * ((self.a + self.pal) + self.l)))
+        time_algo2[0] = ((time.clock() - t) / self.n)
+        time_algo[0] = (timer_avg / self.n)
+        t = time.clock()
         for i in range(self.n):
             acceptors = da.new(Acceptor_to, num=self.a)
             proposers = da.new(Proposer_to, num=self.pal)
@@ -907,7 +948,9 @@ class driverclass(da.DistProcess):
             self.safety_check(i, ' <timeout> ')
             timer_avg += self.time_sum
             self.time_sum = 0
-        time_algo[1] = (timer_avg / (self.n * ((self.a + self.pal) + self.l)))
+        time_algo2[1] = ((time.clock() - t) / self.n)
+        time_algo[1] = (timer_avg / self.n)
+        t = time.clock()
         for i in range(self.n):
             acceptors = da.new(Acceptor_pe, num=self.a)
             proposers = da.new(Proposer_pe, num=self.pal)
@@ -925,7 +968,9 @@ class driverclass(da.DistProcess):
             self.safety_check(i, '<preemption>')
             timer_avg += self.time_sum
             self.time_sum = 0
-        time_algo[2] = (timer_avg / (self.n * ((self.a + self.pal) + self.l)))
+        time_algo2[2] = ((time.clock() - t) / self.n)
+        time_algo[2] = (timer_avg / self.n)
+        t = time.clock()
         for i in range(self.n):
             acceptors = da.new(Acceptor_peto, num=self.a)
             proposers = da.new(Proposer_peto, num=self.pal)
@@ -943,8 +988,9 @@ class driverclass(da.DistProcess):
             self.safety_check(i, '<preemption-timeout>')
             timer_avg += self.time_sum
             self.time_sum = 0
+        time_algo2[3] = ((time.clock() - t) / self.n)
         time_algo[3] = (timer_avg / (self.n * ((self.a + self.pal) + self.l)))
-        return time_algo
+        return (time_algo, time_algo2)
 
     def _driverclass_handler_16(self, s):
         for el in s:
@@ -974,11 +1020,14 @@ def main():
     a = (int(sys.argv[2]) if (len(sys.argv) > 2) else 1)
     l = (int(sys.argv[3]) if (len(sys.argv) > 3) else 1)
     n = (int(sys.argv[4]) if (len(sys.argv) > 4) else 1)
-    r = (int(sys.argv[5]) if (len(sys.argv) > 5) else 0.4)
+    r = (float(sys.argv[5]) if (len(sys.argv) > 5) else 0.2)
     d = (int(sys.argv[6]) if (len(sys.argv) > 6) else 1)
     w = (int(sys.argv[7]) if (len(sys.argv) > 7) else 1)
     tp = (int(sys.argv[8]) if (len(sys.argv) > 8) else 2)
     tl = (int(sys.argv[9]) if (len(sys.argv) > 9) else 50)
+    ml = (int(sys.argv[10]) if (len(sys.argv) > 10) else 3)
+    de = (int(sys.argv[11]) if (len(sys.argv) > 11) else 3)
+    wa = (int(sys.argv[12]) if (len(sys.argv) > 12) else 3)
     driver = da.new(driverclass, num=1)
-    da.setup(driver, (p, a, l, n, r, d, w, tp, tl))
+    da.setup(driver, (p, a, l, n, r, d, w, tp, tl, ml, de, wa))
     da.start(driver)
